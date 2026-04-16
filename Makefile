@@ -104,3 +104,10 @@ help:
 	@echo "  make run-historical  - Run historical weather example"
 	@echo "  make run-geocoding   - Run geocoding example"
 	@echo "  make run-air-quality - Run air quality example"
+
+# Markdown linting
+lint-md:
+	npx markdownlint-cli2 "**/*.md"
+
+format-md:
+	npx markdownlint-cli2 --fix "**/*.md"
