@@ -1,0 +1,26 @@
+build/
+build-*/
+cmake-build-*/
+.cache/
+compile_commands.json
+
+# Object files and libraries
+*.o
+*.a
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.pem
