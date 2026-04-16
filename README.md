@@ -126,12 +126,43 @@ make run-air-quality       # Air quality data
 
 ## Architecture
 
+```mermaid
+graph TD
+    A[your_app] -->|"target_link_libraries(PRIVATE open_meteo)"| B[open_meteo<br/>INTERFACE aggregator]
+    B --> C[open_meteo_api<br/>OpenMeteoClient]
+    B --> D[open_meteo_models<br/>Response types + from_json]
+    B --> E[open_meteo_http<br/>libcurl Pimpl wrapper]
+    B --> F[open_meteo_core<br/>Error, RateLimiter, Retry]
+    C --> D
+    C --> E
+    C --> F
+    E --> G[libcurl]
+    D --> H[nlohmann/json]
 ```
-open_meteo_core     ← error.cpp, rate_limit.cpp, retry.cpp
-open_meteo_http     ← libcurl HTTP client (Pimpl)
-open_meteo_models   ← from_json parsers for all response types
-open_meteo_api      ← OpenMeteoClient (all 12 endpoints)
-open_meteo          ← INTERFACE aggregator (link this)
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Client as OpenMeteoClient
+    participant RL as RateLimiter
+    participant Retry as RetryPolicy
+    participant HTTP as HttpClient
+    participant API as Open-Meteo API
+
+    App->>Client: get_forecast(params)
+    Client->>Client: build_query_string(params)
+    Client->>RL: acquire()
+    RL-->>Client: token granted
+    Client->>Retry: with_retry(http_get)
+    Retry->>HTTP: GET /v1/forecast?lat=...
+    HTTP->>API: HTTPS request
+    API-->>HTTP: JSON response
+    HTTP-->>Retry: HttpResponse
+    Retry-->>Client: Result<HttpResponse>
+    Client->>Client: parse JSON → ForecastResponse
+    Client-->>App: Result<ForecastResponse>
 ```
 
 ## Dependencies
@@ -151,6 +182,15 @@ open_meteo          ← INTERFACE aggregator (link this)
 | Per minute | 600 API calls |
 
 The SDK automatically respects these limits via the built-in token bucket rate limiter. For commercial use with an API key, rate limiting can be disabled or adjusted.
+
+## References
+
+- [Open-Meteo API Documentation](https://open-meteo.com/en/docs) — Official API reference for all endpoints
+- [Open-Meteo SDK Repository](https://github.com/open-meteo/sdk) — FlatBuffers schemas and official SDK bindings
+- [Open-Meteo Pricing & Rate Limits](https://open-meteo.com/en/pricing) — Free tier limits and commercial plans
+- [ERA5 Reanalysis](https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5) — Historical weather data source (1940-present)
+- [nlohmann/json](https://github.com/nlohmann/json) — JSON parsing library used by this SDK
+- [libcurl](https://curl.se/libcurl/) — HTTP client library used by this SDK
 
 ## License
 
