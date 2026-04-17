@@ -3,7 +3,7 @@
 
 #include "open_meteo/models/params.hpp"
 
-#include <sstream>
+#include <format>
 
 namespace open_meteo {
 
@@ -45,9 +45,9 @@ void append_list_param(std::string& query, const std::string& key,
 }
 
 void append_param(std::string& query, const std::string& key, double value) {
-	std::ostringstream oss;
-	oss << value;
-	append_param(query, key, oss.str());
+	// {:g} matches the default operator<< behavior: shortest round-trippable
+	// representation, trailing zeros stripped, scientific notation above ~1e6.
+	append_param(query, key, std::format("{:g}", value));
 }
 
 void append_param(std::string& query, const std::string& key, int value) {
