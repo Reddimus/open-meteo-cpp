@@ -53,9 +53,15 @@ struct HttpClient::Impl {
 	Impl(const Impl&) = delete;
 	Impl& operator=(const Impl&) = delete;
 
-	/// Build the full URL, appending api_key as a query parameter if set
+	/// Build the full URL, appending api_key as a query parameter if set.
+	/// If path is already an absolute URL (http:// or https://), it is used as-is.
 	[[nodiscard]] std::string build_url(std::string_view path) const {
-		std::string url = config.base_url + std::string(path);
+		std::string url;
+		if (path.starts_with("http://") || path.starts_with("https://")) {
+			url.assign(path);
+		} else {
+			url = config.base_url + std::string(path);
+		}
 
 		if (!config.api_key.empty()) {
 			// Determine separator: '?' if no query string yet, '&' otherwise
