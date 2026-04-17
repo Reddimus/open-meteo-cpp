@@ -41,7 +41,7 @@ inline constexpr std::string_view kHistoricalForecast =
 	"https://historical-forecast-api.open-meteo.com/v1/forecast";
 inline constexpr std::string_view kPreviousRuns =
 	"https://previous-runs-api.open-meteo.com/v1/forecast";
-inline constexpr std::string_view kEnsemble = "https://api.open-meteo.com/v1/ensemble";
+inline constexpr std::string_view kEnsemble = "https://ensemble-api.open-meteo.com/v1/ensemble";
 inline constexpr std::string_view kMarine = "https://api.open-meteo.com/v1/marine";
 inline constexpr std::string_view kAirQuality =
 	"https://air-quality-api.open-meteo.com/v1/air-quality";
