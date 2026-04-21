@@ -24,9 +24,9 @@ class RateLimiter {
 public:
 	/// Configuration for rate limiting
 	struct Config {
-		std::uint16_t max_tokens = 10;					   ///< Maximum tokens (burst capacity)
-		std::chrono::milliseconds refill_interval{100};	   ///< Time to add one token (100ms = 600/min)
-		std::uint16_t initial_tokens = 10;				   ///< Starting tokens
+		std::uint16_t max_tokens = 10;					///< Maximum tokens (burst capacity)
+		std::chrono::milliseconds refill_interval{100}; ///< Time to add one token (100ms = 600/min)
+		std::uint16_t initial_tokens = 10;				///< Starting tokens
 		std::optional<std::chrono::milliseconds> max_wait; ///< Max time to wait for acquire()
 	};
 

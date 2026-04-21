@@ -20,8 +20,8 @@ std::optional<TimeseriesData> parse_timeseries(const nlohmann::json& j, const ch
 	return ts;
 }
 
-std::optional<std::unordered_map<std::string, std::string>>
-parse_units_map(const nlohmann::json& j, const char* key) {
+std::optional<std::unordered_map<std::string, std::string>> parse_units_map(const nlohmann::json& j,
+																			const char* key) {
 	if (!j.contains(key) || !j[key].is_object()) {
 		return std::nullopt;
 	}

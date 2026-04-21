@@ -8,37 +8,19 @@
 namespace open_meteo {
 
 /// Temperature unit for API requests
-enum class TemperatureUnit : std::uint8_t {
-	Celsius,
-	Fahrenheit
-};
+enum class TemperatureUnit : std::uint8_t { Celsius, Fahrenheit };
 
 /// Wind speed unit for API requests
-enum class WindSpeedUnit : std::uint8_t {
-	Kmh,
-	Ms,
-	Mph,
-	Knots
-};
+enum class WindSpeedUnit : std::uint8_t { Kmh, Ms, Mph, Knots };
 
 /// Precipitation unit for API requests
-enum class PrecipitationUnit : std::uint8_t {
-	Mm,
-	Inch
-};
+enum class PrecipitationUnit : std::uint8_t { Mm, Inch };
 
 /// Time format for API responses
-enum class TimeFormat : std::uint8_t {
-	Iso8601,
-	Unixtime
-};
+enum class TimeFormat : std::uint8_t { Iso8601, Unixtime };
 
 /// Grid cell selection strategy
-enum class CellSelection : std::uint8_t {
-	Land,
-	Sea,
-	Nearest
-};
+enum class CellSelection : std::uint8_t { Land, Sea, Nearest };
 
 // --- Display string conversions ---
 
