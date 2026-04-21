@@ -62,20 +62,16 @@ void append_param(std::string& query, const std::string& key, bool value) {
 
 namespace {
 
-void append_common_weather_params(std::string& query,
-								  const std::optional<std::vector<std::string>>& hourly,
-								  const std::optional<std::vector<std::string>>& daily,
-								  const std::optional<std::vector<std::string>>& current,
-								  const std::optional<int>& forecast_days,
-								  const std::optional<int>& past_days,
-								  const std::optional<std::vector<std::string>>& models,
-								  const std::optional<std::string>& temperature_unit,
-								  const std::optional<std::string>& wind_speed_unit,
-								  const std::optional<std::string>& precipitation_unit,
-								  const std::optional<std::string>& timezone,
-								  const std::optional<std::string>& cell_selection,
-								  const std::optional<std::string>& start_date,
-								  const std::optional<std::string>& end_date) {
+void append_common_weather_params(
+	std::string& query, const std::optional<std::vector<std::string>>& hourly,
+	const std::optional<std::vector<std::string>>& daily,
+	const std::optional<std::vector<std::string>>& current, const std::optional<int>& forecast_days,
+	const std::optional<int>& past_days, const std::optional<std::vector<std::string>>& models,
+	const std::optional<std::string>& temperature_unit,
+	const std::optional<std::string>& wind_speed_unit,
+	const std::optional<std::string>& precipitation_unit,
+	const std::optional<std::string>& timezone, const std::optional<std::string>& cell_selection,
+	const std::optional<std::string>& start_date, const std::optional<std::string>& end_date) {
 	if (hourly) {
 		append_list_param(query, "hourly", *hourly);
 	}
@@ -126,8 +122,8 @@ std::string ForecastParams::build_query_string() const {
 	append_param(query, "latitude", latitude);
 	append_param(query, "longitude", longitude);
 	append_common_weather_params(query, hourly, daily, current, forecast_days, past_days, models,
-								temperature_unit, wind_speed_unit, precipitation_unit, timezone,
-								cell_selection, start_date, end_date);
+								 temperature_unit, wind_speed_unit, precipitation_unit, timezone,
+								 cell_selection, start_date, end_date);
 	return query;
 }
 
@@ -173,8 +169,8 @@ std::string HistoricalForecastParams::build_query_string() const {
 	append_param(query, "latitude", latitude);
 	append_param(query, "longitude", longitude);
 	append_common_weather_params(query, hourly, daily, current, forecast_days, past_days, models,
-								temperature_unit, wind_speed_unit, precipitation_unit, timezone,
-								cell_selection, start_date, end_date);
+								 temperature_unit, wind_speed_unit, precipitation_unit, timezone,
+								 cell_selection, start_date, end_date);
 	return query;
 }
 
@@ -184,11 +180,50 @@ std::string PreviousRunsParams::build_query_string() const {
 	std::string query;
 	append_param(query, "latitude", latitude);
 	append_param(query, "longitude", longitude);
-	append_common_weather_params(query, hourly, daily, current, forecast_days, past_days, models,
-								temperature_unit, wind_speed_unit, precipitation_unit, timezone,
-								cell_selection, start_date, end_date);
+	if (hourly) {
+		append_list_param(query, "hourly", *hourly);
+	}
+	if (daily) {
+		append_list_param(query, "daily", *daily);
+	}
+	if (current) {
+		append_list_param(query, "current", *current);
+	}
+	if (forecast_days) {
+		append_param(query, "forecast_days", *forecast_days);
+	}
+	if (past_days) {
+		append_param(query, "past_days", *past_days);
+	}
 	if (model_name) {
 		append_param(query, "model_name", *model_name);
+	} else if (models) {
+		if (models->size() == 1) {
+			append_param(query, "model_name", models->front());
+		} else {
+			append_list_param(query, "models", *models);
+		}
+	}
+	if (temperature_unit) {
+		append_param(query, "temperature_unit", *temperature_unit);
+	}
+	if (wind_speed_unit) {
+		append_param(query, "wind_speed_unit", *wind_speed_unit);
+	}
+	if (precipitation_unit) {
+		append_param(query, "precipitation_unit", *precipitation_unit);
+	}
+	if (timezone) {
+		append_param(query, "timezone", *timezone);
+	}
+	if (cell_selection) {
+		append_param(query, "cell_selection", *cell_selection);
+	}
+	if (start_date) {
+		append_param(query, "start_date", *start_date);
+	}
+	if (end_date) {
+		append_param(query, "end_date", *end_date);
 	}
 	if (previous_day) {
 		append_param(query, "previous_day", *previous_day);
@@ -203,8 +238,8 @@ std::string EnsembleParams::build_query_string() const {
 	append_param(query, "latitude", latitude);
 	append_param(query, "longitude", longitude);
 	append_common_weather_params(query, hourly, daily, current, forecast_days, past_days, models,
-								temperature_unit, wind_speed_unit, precipitation_unit, timezone,
-								cell_selection, start_date, end_date);
+								 temperature_unit, wind_speed_unit, precipitation_unit, timezone,
+								 cell_selection, start_date, end_date);
 	return query;
 }
 
