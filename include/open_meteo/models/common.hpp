@@ -31,7 +31,7 @@ struct Location {
 /// variables (e.g. weather codes as descriptions) go into `string_values`.
 struct TimeseriesData {
 	std::vector<std::string> time;
-	std::unordered_map<std::string, std::vector<double>> values;		  // variable_name -> array
+	std::unordered_map<std::string, std::vector<double>> values; // variable_name -> array
 	std::unordered_map<std::string, std::vector<std::string>> string_values; // for weather codes
 };
 

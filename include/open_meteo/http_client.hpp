@@ -27,7 +27,7 @@ struct HttpResponse {
 struct HttpClientConfig {
 	std::string base_url{"https://api.open-meteo.com"};
 	std::string user_agent{"open-meteo-cpp/0.1.0"};
-	std::string api_key;				   // Optional: for Open-Meteo commercial API
+	std::string api_key; // Optional: for Open-Meteo commercial API
 	std::chrono::seconds timeout{30};
 	bool verify_ssl{true};
 };

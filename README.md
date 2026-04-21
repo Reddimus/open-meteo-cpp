@@ -70,7 +70,7 @@ normalizes singleton `models={...}` inputs to that wire format, while preserving
 ```bash
 make build        # Release build
 make test         # Run tests
-make lint         # Check formatting (requires clang-format)
+make lint         # Check formatting + explicit local-type audit
 make format       # Apply formatting
 make clean        # Clean build artifacts
 ```

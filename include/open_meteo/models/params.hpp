@@ -62,8 +62,8 @@ struct ForecastParams {
 struct HistoricalParams {
 	double latitude{0.0};
 	double longitude{0.0};
-	std::string start_date;	 // required
-	std::string end_date;	 // required
+	std::string start_date; // required
+	std::string end_date;	// required
 	std::optional<std::vector<std::string>> hourly;
 	std::optional<std::vector<std::string>> daily;
 	std::optional<std::vector<std::string>> models;

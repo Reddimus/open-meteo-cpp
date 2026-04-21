@@ -92,16 +92,14 @@ public:
 	// ===== Historical API =====
 
 	/// Get historical weather data from the archive
-	[[nodiscard]] Result<HistoricalWeatherResponse>
-	get_historical(const HistoricalParams& params);
+	[[nodiscard]] Result<HistoricalWeatherResponse> get_historical(const HistoricalParams& params);
 
 	/// Get historical forecast model data
 	[[nodiscard]] Result<HistoricalForecastResponse>
 	get_historical_forecast(const HistoricalForecastParams& params);
 
 	/// Get data from previous model runs
-	[[nodiscard]] Result<PreviousRunsResponse>
-	get_previous_runs(const PreviousRunsParams& params);
+	[[nodiscard]] Result<PreviousRunsResponse> get_previous_runs(const PreviousRunsParams& params);
 
 	// ===== Ensemble API =====
 

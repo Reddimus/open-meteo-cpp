@@ -16,7 +16,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake pkg-config libcurl4-openssl-dev
+            build-essential cmake pkg-config libcurl4-openssl-dev clang-format
+
+      - name: Lint
+        run: make lint
 
       - name: Build
         run: |
@@ -31,6 +34,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install pkg-config curl clang-format
+
+      - name: Lint
+        run: make lint
 
       - name: Build
         run: |

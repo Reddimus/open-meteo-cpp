@@ -99,8 +99,7 @@ Result<ForecastResponse> OpenMeteoClient::get_forecast(const ForecastParams& par
 
 // ===== Historical API =====
 
-Result<HistoricalWeatherResponse>
-OpenMeteoClient::get_historical(const HistoricalParams& params) {
+Result<HistoricalWeatherResponse> OpenMeteoClient::get_historical(const HistoricalParams& params) {
 	std::string full_url = resolve_url(url::kHistorical) + params.build_query_string();
 
 	Result<HttpResponse> result = do_get(full_url);
@@ -143,8 +142,7 @@ OpenMeteoClient::get_historical_forecast(const HistoricalForecastParams& params)
 	}
 }
 
-Result<PreviousRunsResponse>
-OpenMeteoClient::get_previous_runs(const PreviousRunsParams& params) {
+Result<PreviousRunsResponse> OpenMeteoClient::get_previous_runs(const PreviousRunsParams& params) {
 	std::string full_url = resolve_url(url::kPreviousRuns) + params.build_query_string();
 
 	Result<HttpResponse> result = do_get(full_url);
