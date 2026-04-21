@@ -52,6 +52,11 @@ int main() {
 - **Commercial API support**: Optional API key + customer endpoint switching
 - **Thread-safe rate limiter**: Safe for concurrent use
 
+For the Previous Runs API, single-model requests should resolve to
+`model_name=<model>`. `PreviousRunsParams` now prefers `model_name` when set and
+normalizes singleton `models={...}` inputs to that wire format, while preserving
+`models=` for true multi-model requests.
+
 ## Building
 
 ### Requirements
@@ -88,7 +93,7 @@ make clean        # Clean build artifacts
 include(FetchContent)
 FetchContent_Declare(open_meteo_cpp
     GIT_REPOSITORY https://github.com/Reddimus/open-meteo-cpp.git
-    GIT_TAG v0.1.0
+    GIT_TAG v0.1.2
     GIT_SHALLOW TRUE
 )
 set(OPEN_METEO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
