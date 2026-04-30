@@ -1,5 +1,10 @@
 # open-meteo-cpp
 
+[![CI](https://github.com/Reddimus/open-meteo-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/Reddimus/open-meteo-cpp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Reddimus/open-meteo-cpp)](https://github.com/Reddimus/open-meteo-cpp/releases)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 C++23 SDK for the [Open-Meteo](https://open-meteo.com/) weather API.
 
 Modern, type-safe client covering all 12 Open-Meteo endpoints with `std::expected` error handling, built-in rate limiting, retry with exponential backoff, and both JSON and FlatBuffers response support.
