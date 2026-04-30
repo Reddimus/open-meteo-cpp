@@ -75,7 +75,9 @@ clean:
 	@rm -rf $(BUILD_DIR) build-coverage
 	@echo "Cleaned build directory"
 
-# Run examples
+# Run examples — each runs a real HTTP call against api.open-meteo.com.
+# Add a new one by dropping examples/example_<name>.cpp + add_example(<name>)
+# in examples/CMakeLists.txt + a `run-<name>` target here.
 run-forecast: build
 	@./$(BUILD_DIR)/examples/example_forecast
 
