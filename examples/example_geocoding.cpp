@@ -9,6 +9,7 @@
 // matches to stdout.
 
 #include "open_meteo/client.hpp"
+#include "open_meteo/error.hpp"
 #include "open_meteo/models/geocoding.hpp"
 #include "open_meteo/models/params.hpp"
 
@@ -26,20 +27,20 @@ int main(int argc, char** argv) {
 	params.count = 5;
 	params.language = "en";
 
-	auto result = client.get_geocoding(params);
+	open_meteo::Result<open_meteo::GeocodingResponse> result = client.get_geocoding(params);
 	if (!result) {
 		std::cerr << "Geocoding failed: " << result.error().message << "\n";
 		return EXIT_FAILURE;
 	}
 
-	const auto& response = result.value();
+	const open_meteo::GeocodingResponse& response = result.value();
 	if (response.results.empty()) {
 		std::cout << "No results for \"" << query << "\".\n";
 		return EXIT_SUCCESS;
 	}
 
 	std::cout << "Top " << response.results.size() << " result(s) for \"" << query << "\":\n";
-	for (const auto& hit : response.results) {
+	for (const open_meteo::GeocodingResult& hit : response.results) {
 		std::cout << "  - " << hit.name;
 		if (hit.admin1)
 			std::cout << ", " << *hit.admin1;

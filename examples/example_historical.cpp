@@ -7,6 +7,7 @@
 // historical archive lags real-time by ~5 days).
 
 #include "open_meteo/client.hpp"
+#include "open_meteo/error.hpp"
 #include "open_meteo/models/historical.hpp"
 #include "open_meteo/models/params.hpp"
 
@@ -17,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -32,9 +34,9 @@ std::string format_date(std::chrono::system_clock::time_point tp) {
 } // namespace
 
 int main() {
-	auto now = std::chrono::system_clock::now();
-	auto end = now - std::chrono::hours(24 * 30);
-	auto start = end - std::chrono::hours(24 * 7);
+	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point end = now - std::chrono::hours(24 * 30);
+	std::chrono::system_clock::time_point start = end - std::chrono::hours(24 * 7);
 
 	open_meteo::OpenMeteoClient client{open_meteo::OpenMeteoClient::Config{}};
 
@@ -46,13 +48,14 @@ int main() {
 	params.daily =
 		std::vector<std::string>{"temperature_2m_max", "temperature_2m_min", "precipitation_sum"};
 
-	auto result = client.get_historical(params);
+	open_meteo::Result<open_meteo::HistoricalWeatherResponse> result =
+		client.get_historical(params);
 	if (!result) {
 		std::cerr << "Historical query failed: " << result.error().message << "\n";
 		return EXIT_FAILURE;
 	}
 
-	const auto& historical = result.value();
+	const open_meteo::HistoricalWeatherResponse& historical = result.value();
 	std::cout << "Daily history for (" << historical.latitude << ", " << historical.longitude
 			  << ") from " << params.start_date << " to " << params.end_date << ":\n";
 
@@ -64,7 +67,7 @@ int main() {
 	auto max_it = historical.daily->values.find("temperature_2m_max");
 	auto min_it = historical.daily->values.find("temperature_2m_min");
 	auto pr_it = historical.daily->values.find("precipitation_sum");
-	const auto& times = historical.daily->time;
+	const std::vector<std::string>& times = historical.daily->time;
 	for (std::size_t i = 0; i < times.size(); ++i) {
 		std::cout << "  " << times[i];
 		if (max_it != historical.daily->values.end() && i < max_it->second.size())
