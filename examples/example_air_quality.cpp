@@ -5,12 +5,14 @@
 // Run via `make run-air-quality`.
 
 #include "open_meteo/client.hpp"
+#include "open_meteo/error.hpp"
 #include "open_meteo/models/air_quality.hpp"
 #include "open_meteo/models/params.hpp"
 
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <vector>
 
 int main(int argc, char** argv) {
 	double latitude = (argc > 1) ? std::stod(argv[1]) : 40.7128;
@@ -24,13 +26,13 @@ int main(int argc, char** argv) {
 	params.hourly = std::vector<std::string>{"pm10", "pm2_5", "us_aqi"};
 	params.forecast_days = 1;
 
-	auto result = client.get_air_quality(params);
+	open_meteo::Result<open_meteo::AirQualityResponse> result = client.get_air_quality(params);
 	if (!result) {
 		std::cerr << "Air-quality query failed: " << result.error().message << "\n";
 		return EXIT_FAILURE;
 	}
 
-	const auto& aq = result.value();
+	const open_meteo::AirQualityResponse& aq = result.value();
 	std::cout << "Air quality for (" << aq.latitude << ", " << aq.longitude << "):\n";
 
 	if (!aq.hourly || aq.hourly->time.empty()) {
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
 	auto pm25_it = aq.hourly->values.find("pm2_5");
 	auto pm10_it = aq.hourly->values.find("pm10");
 	auto aqi_it = aq.hourly->values.find("us_aqi");
-	const auto& times = aq.hourly->time;
+	const std::vector<std::string>& times = aq.hourly->time;
 	std::size_t n = std::min<std::size_t>(6, times.size());
 	std::cout << "First " << n << " hourly samples:\n";
 	for (std::size_t i = 0; i < n; ++i) {
