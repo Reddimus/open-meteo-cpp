@@ -202,6 +202,22 @@ The SDK automatically respects these limits via the built-in token bucket rate l
 - [nlohmann/json](https://github.com/nlohmann/json) — JSON parsing library used by this SDK
 - [libcurl](https://curl.se/libcurl/) — HTTP client library used by this SDK
 
+## Contributing
+
+Issues and pull requests are welcome. For non-trivial changes please
+open an issue first to discuss the approach. Local dev loop:
+
+```bash
+make build           # cmake -B build && cmake --build build
+make test            # ctest --output-on-failure
+make lint            # clang-format --dry-run -Werror
+make format          # clang-format -i (call before pushing)
+```
+
+CI runs the same lint+build+test on push and PR (Ubuntu 24.04 +
+macos-latest); see `.github/workflows/ci.yml`.
+
+
 ## License
 
 [MIT](LICENSE.md)
