@@ -22,6 +22,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify tag matches CMakeLists project VERSION
+        # Pin the source-of-truth: the tag X.Y.Z must equal the
+        # `project(open-meteo-cpp VERSION X.Y.Z ...)` field in
+        # CMakeLists.txt. Without this guard the two drift silently
+        # — e.g. v0.1.1 / v0.1.2 tags shipped while CMakeLists still
+        # said 0.1.0, which corrupts `find_package(open-meteo-cpp
+        # VERSION X.Y.Z)` consumer queries.
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          version="${tag#v}"
+          cmake_version=$(awk -F 'VERSION |LANGUAGES' '
+            /^project\(open-meteo-cpp / { gsub(/[ \t]/,"",$2); print $2; exit }
+          ' CMakeLists.txt)
+          if [ "$cmake_version" != "$version" ]; then
+            echo "::error::tag $tag implies version '$version' but CMakeLists.txt says '$cmake_version'" >&2
+            echo "Bump 'project(open-meteo-cpp VERSION ...)' to match before tagging." >&2
+            exit 1
+          fi
+          echo "OK: tag $tag matches CMakeLists VERSION $cmake_version"
+
       - name: Extract release notes from CHANGELOG.md
         run: |
           tag="${GITHUB_REF#refs/tags/}"
