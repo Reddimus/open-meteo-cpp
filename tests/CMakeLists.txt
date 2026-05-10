@@ -7,6 +7,11 @@ target_link_libraries(open_meteo_params_test PRIVATE
     open_meteo_models
 )
 
-target_compile_options(open_meteo_params_test PRIVATE -Wall -Wextra -Wpedantic)
+if(NOT MSVC)
+    # GCC/Clang strict warnings; MSVC's analogous switches use
+    # different syntax (/W4) and a different noise profile so we
+    # leave the default there.
+    target_compile_options(open_meteo_params_test PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 add_test(NAME open_meteo_params_test COMMAND open_meteo_params_test)

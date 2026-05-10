@@ -15,11 +15,18 @@ option(OPEN_METEO_BUILD_EXAMPLES "Build examples" ON)
 option(OPEN_METEO_ENABLE_LTO "Enable Link Time Optimization" ON)
 option(OPEN_METEO_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
 
-# Compiler warnings
-add_compile_options(-Wall -Wextra -Wpedantic)
+# Compiler warnings. -Wpedantic / -Wextra are GCC/Clang only;
+# MSVC's analogous switch is /W4 but it's noisy so we leave it off
+# for the Windows path.
+if(NOT MSVC)
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-# Aggressive optimization flags for Release builds
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+# Aggressive optimization flags for Release builds. MSVC has its own
+# Release defaults; only override for GCC/Clang.
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+endif()
 
 # Enable LTO if requested and supported
 if(OPEN_METEO_ENABLE_LTO)
@@ -38,16 +45,18 @@ endif()
 # Default: -march=x86-64-v3 (2017+ x86 baseline — AVX2, BMI2, FMA). Covers every
 # server we deploy on and matches what our downstream service Dockerfiles use,
 # so FetchContent-consumed builds produce the same codegen as stand-alone ones.
-if(OPEN_METEO_NATIVE_ARCH)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-    message(STATUS "Using -march=native for CPU-specific optimizations")
-else()
-    include(CheckCXXCompilerFlag)
-    check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
-    if(COMPILER_SUPPORTS_X86_64_V3)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
+if(NOT MSVC)
+    if(OPEN_METEO_NATIVE_ARCH)
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+        message(STATUS "Using -march=native for CPU-specific optimizations")
     else()
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
+        if(COMPILER_SUPPORTS_X86_64_V3)
+            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
+        else()
+            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
+        endif()
     endif()
 endif()
 
