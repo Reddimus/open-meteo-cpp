@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(open-meteo-cpp VERSION 0.1.2 LANGUAGES CXX)
+project(open-meteo-cpp VERSION 0.1.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
