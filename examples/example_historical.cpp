@@ -25,7 +25,15 @@ namespace {
 std::string format_date(std::chrono::system_clock::time_point tp) {
 	std::time_t t = std::chrono::system_clock::to_time_t(tp);
 	std::tm tm{};
+	// gmtime_r is POSIX-only; gmtime_s is the MSVC equivalent. Both
+	// take the same data via different argument orderings, so wrap
+	// with a preprocessor branch rather than reaching for a third
+	// dependency.
+#if defined(_WIN32)
+	gmtime_s(&tm, &t);
+#else
 	gmtime_r(&t, &tm);
+#endif
 	std::ostringstream out;
 	out << std::put_time(&tm, "%Y-%m-%d");
 	return out.str();
