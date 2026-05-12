@@ -3,8 +3,8 @@
 
 #include "open_meteo/client.hpp"
 
-#include <nlohmann/json.hpp>
 #include <string>
+#include <string_view>
 
 namespace open_meteo {
 
@@ -71,280 +71,212 @@ Result<HttpResponse> OpenMeteoClient::do_get(const std::string& full_url) {
 // 1. Build query string from params
 // 2. Construct full URL (base + query)
 // 3. HTTP GET with rate limiting + retry (via do_get)
-// 4. Parse JSON response
+// 4. Glaze-parse JSON response via the appropriate deserialize_* helper
 // 5. Return Result<T>
+
+namespace {
+
+// Common HTTP-result handling: status check + body extraction.
+// Returns the body on success, an Error on failure.
+Result<std::string> body_or_error(Result<HttpResponse>&& http_result) {
+	if (!http_result) {
+		return std::unexpected(http_result.error());
+	}
+	if (http_result->status_code != 200) {
+		return std::unexpected(Error::from_response(http_result->status_code, http_result->body));
+	}
+	return std::move(http_result->body);
+}
+
+} // namespace
 
 // ===== Forecast API =====
 
 Result<ForecastResponse> OpenMeteoClient::get_forecast(const ForecastParams& params) {
 	std::string full_url = resolve_url(url::kForecast) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	ForecastResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ForecastResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Historical API =====
 
 Result<HistoricalWeatherResponse> OpenMeteoClient::get_historical(const HistoricalParams& params) {
 	std::string full_url = resolve_url(url::kHistorical) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	HistoricalWeatherResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		HistoricalWeatherResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<HistoricalForecastResponse>
 OpenMeteoClient::get_historical_forecast(const HistoricalForecastParams& params) {
 	std::string full_url = resolve_url(url::kHistoricalForecast) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	HistoricalForecastResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		HistoricalForecastResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 Result<PreviousRunsResponse> OpenMeteoClient::get_previous_runs(const PreviousRunsParams& params) {
 	std::string full_url = resolve_url(url::kPreviousRuns) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	PreviousRunsResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		PreviousRunsResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Ensemble API =====
 
 Result<EnsembleResponse> OpenMeteoClient::get_ensemble(const EnsembleParams& params) {
 	std::string full_url = resolve_url(url::kEnsemble) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	EnsembleResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		EnsembleResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Marine API =====
 
 Result<MarineResponse> OpenMeteoClient::get_marine(const MarineParams& params) {
 	std::string full_url = resolve_url(url::kMarine) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	MarineResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		MarineResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Air Quality API =====
 
 Result<AirQualityResponse> OpenMeteoClient::get_air_quality(const AirQualityParams& params) {
 	std::string full_url = resolve_url(url::kAirQuality) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	AirQualityResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		AirQualityResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Climate API =====
 
 Result<ClimateResponse> OpenMeteoClient::get_climate(const ClimateParams& params) {
 	std::string full_url = resolve_url(url::kClimate) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	ClimateResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ClimateResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Seasonal API =====
 
 Result<SeasonalResponse> OpenMeteoClient::get_seasonal(const SeasonalParams& params) {
 	std::string full_url = resolve_url(url::kSeasonal) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	SeasonalResponse response;
+	Result<void> parse = deserialize_seasonal_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		SeasonalResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Flood API =====
 
 Result<FloodResponse> OpenMeteoClient::get_flood(const FloodParams& params) {
 	std::string full_url = resolve_url(url::kFlood) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	FloodResponse response;
+	Result<void> parse = deserialize_weather_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		FloodResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Elevation API =====
 
 Result<ElevationResponse> OpenMeteoClient::get_elevation(const ElevationParams& params) {
 	std::string full_url = resolve_url(url::kElevation) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	ElevationResponse response;
+	Result<void> parse = deserialize_elevation_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		ElevationResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 // ===== Geocoding API =====
 
 Result<GeocodingResponse> OpenMeteoClient::get_geocoding(const GeocodingParams& params) {
 	std::string full_url = resolve_url(url::kGeocoding) + params.build_query_string();
-
-	Result<HttpResponse> result = do_get(full_url);
-	if (!result) {
-		return std::unexpected(result.error());
+	Result<std::string> body = body_or_error(do_get(full_url));
+	if (!body) {
+		return std::unexpected(body.error());
 	}
-	if (result->status_code != 200) {
-		return std::unexpected(Error::from_response(result->status_code, result->body));
+	GeocodingResponse response;
+	Result<void> parse = deserialize_geocoding_response(*body, response);
+	if (!parse) {
+		return std::unexpected(parse.error());
 	}
-
-	try {
-		nlohmann::json j = nlohmann::json::parse(result->body);
-		GeocodingResponse response;
-		from_json(j, response);
-		return response;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(e.what()));
-	}
+	return response;
 }
 
 } // namespace open_meteo

@@ -23,7 +23,7 @@ make run-air-quality   # examples/example_air_quality.cpp
 - **C++23**: `std::expected<T, Error>` for all returns, no exceptions
 - **Patterns**: Pimpl (`HttpClient`, `OpenMeteoClient`), non-copyable/movable clients, `[[nodiscard]]`
 - **No-auth API**: Open-Meteo's free tier doesn't require keys; clients can opt into customer-tier subdomains via `Config{.use_customer_endpoints=true}`
-- **JSON**: nlohmann/json via FetchContent
+- **JSON**: [Glaze](https://github.com/stephenberry/glaze) v7.6.0 via FetchContent (compile-time reflection, ~4x parse speedup over nlohmann on dense numeric payloads — migrated 2026-05-11). See `tests/parse_benchmark.cpp` for the regression guard.
 - **Tests**: GoogleTest via FetchContent
 - **12 endpoints planned**: forecast, historical-weather, historical-forecast, previous-runs, ensemble, marine, air-quality, climate, seasonal-forecast, flood, elevation, geocoding. As of v0.1.2, the `OpenMeteoClient` covers forecast/historical/historical-forecast/air-quality/elevation/seasonal/geocoding via `src/api/client.cpp`. Examples ship for 4 (see Makefile).
 
