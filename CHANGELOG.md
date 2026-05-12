@@ -6,6 +6,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-12
+
 ### Changed
 
 - **BREAKING**: JSON parsing migrated from `nlohmann/json` v3.11.3 to
@@ -133,7 +135,9 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Built-in rate limiting + retry with exponential backoff
 - Mermaid architecture diagrams + citations in README
 
-[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Reddimus/open-meteo-cpp/releases/tag/v0.1.0
