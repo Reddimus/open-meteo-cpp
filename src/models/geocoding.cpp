@@ -3,57 +3,44 @@
 
 #include "open_meteo/models/geocoding.hpp"
 
-#include "open_meteo/models/common.hpp"
-
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <string_view>
 
 namespace open_meteo {
 
-void from_json(const nlohmann::json& j, GeocodingResult& result) {
-	result.id = json_int(j, "id");
-	result.name = json_string(j, "name");
-	result.latitude = json_double(j, "latitude");
-	result.longitude = json_double(j, "longitude");
-	result.elevation = json_double(j, "elevation");
-	result.timezone = json_string(j, "timezone");
-	result.country = json_string(j, "country");
-	result.country_code = json_string(j, "country_code");
+// GeocodingResult / GeocodingResponse are fully-statically-typed. Use Glaze's
+// direct reflected path. Open-Meteo occasionally returns extra metadata fields
+// (e.g. feature_code, admin*_id) that we don't model — tolerate them via
+// error_on_unknown_keys = false.
 
-	if (j.contains("admin1") && j["admin1"].is_string()) {
-		result.admin1 = j["admin1"].get<std::string>();
-	}
-	if (j.contains("admin2") && j["admin2"].is_string()) {
-		result.admin2 = j["admin2"].get<std::string>();
-	}
-	if (j.contains("admin3") && j["admin3"].is_string()) {
-		result.admin3 = j["admin3"].get<std::string>();
-	}
-	if (j.contains("population") && j["population"].is_number()) {
-		result.population = j["population"].get<int>();
-	}
-	if (j.contains("postcodes") && j["postcodes"].is_array()) {
-		std::vector<std::string> codes;
-		codes.reserve(j["postcodes"].size());
-		for (const nlohmann::json& pc : j["postcodes"]) {
-			if (pc.is_string()) {
-				codes.push_back(pc.get<std::string>());
-			}
-		}
-		result.postcodes = std::move(codes);
-	}
-}
+} // namespace open_meteo
 
-void from_json(const nlohmann::json& j, GeocodingResponse& resp) {
-	resp.generationtime_ms = json_double(j, "generationtime_ms");
+template <>
+struct glz::meta<open_meteo::GeocodingResult> {
+	using T = open_meteo::GeocodingResult;
+	static constexpr auto value = // auto-ok: glz::object returns unspellable tuple
+		object("id", &T::id, "name", &T::name, "latitude", &T::latitude, "longitude", &T::longitude,
+			   "elevation", &T::elevation, "timezone", &T::timezone, "country", &T::country,
+			   "country_code", &T::country_code, "admin1", &T::admin1, "admin2", &T::admin2,
+			   "admin3", &T::admin3, "population", &T::population, "postcodes", &T::postcodes);
+};
 
-	if (j.contains("results") && j["results"].is_array()) {
-		resp.results.reserve(j["results"].size());
-		for (const nlohmann::json& item : j["results"]) {
-			GeocodingResult result;
-			from_json(item, result);
-			resp.results.push_back(std::move(result));
-		}
+template <>
+struct glz::meta<open_meteo::GeocodingResponse> {
+	using T = open_meteo::GeocodingResponse;
+	static constexpr auto value = // auto-ok: glz::object returns unspellable tuple
+		object("results", &T::results, "generationtime_ms", &T::generationtime_ms);
+};
+
+namespace open_meteo {
+
+Result<void> deserialize_geocoding_response(std::string_view body, GeocodingResponse& out) {
+	constexpr glz::opts opts{.error_on_unknown_keys = false};
+	glz::error_ctx ec = glz::read<opts>(out, body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	return {};
 }
 
 } // namespace open_meteo

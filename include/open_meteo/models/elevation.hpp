@@ -5,7 +5,9 @@
 /// @file elevation.hpp
 /// @brief Elevation endpoint response types
 
-#include <nlohmann/json_fwd.hpp>
+#include "open_meteo/error.hpp"
+
+#include <string_view>
 #include <vector>
 
 namespace open_meteo {
@@ -15,6 +17,7 @@ struct ElevationResponse {
 	std::vector<double> elevation;
 };
 
-void from_json(const nlohmann::json& j, ElevationResponse& resp);
+[[nodiscard]] Result<void> deserialize_elevation_response(std::string_view body,
+														  ElevationResponse& out);
 
 } // namespace open_meteo

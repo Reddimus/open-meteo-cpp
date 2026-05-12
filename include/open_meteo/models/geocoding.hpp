@@ -5,9 +5,11 @@
 /// @file geocoding.hpp
 /// @brief Geocoding endpoint response types
 
-#include <nlohmann/json_fwd.hpp>
+#include "open_meteo/error.hpp"
+
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace open_meteo {
@@ -35,7 +37,7 @@ struct GeocodingResponse {
 	double generationtime_ms{0.0};
 };
 
-void from_json(const nlohmann::json& j, GeocodingResult& result);
-void from_json(const nlohmann::json& j, GeocodingResponse& resp);
+[[nodiscard]] Result<void> deserialize_geocoding_response(std::string_view body,
+														  GeocodingResponse& out);
 
 } // namespace open_meteo

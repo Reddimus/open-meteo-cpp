@@ -5,9 +5,10 @@
 /// @file seasonal.hpp
 /// @brief Seasonal forecast endpoint response types
 
+#include "open_meteo/error.hpp"
 #include "open_meteo/models/common.hpp"
 
-#include <nlohmann/json_fwd.hpp>
+#include <string_view>
 
 namespace open_meteo {
 
@@ -21,6 +22,7 @@ struct SeasonalResponse : WeatherResponse {
 	std::optional<std::unordered_map<std::string, std::string>> monthly_units;
 };
 
-void from_json(const nlohmann::json& j, SeasonalResponse& resp);
+[[nodiscard]] Result<void> deserialize_seasonal_response(std::string_view body,
+														 SeasonalResponse& out);
 
 } // namespace open_meteo

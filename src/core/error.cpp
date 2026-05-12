@@ -3,7 +3,8 @@
 
 #include "open_meteo/error.hpp"
 
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
 
 namespace open_meteo {
 
@@ -24,15 +25,18 @@ Error Error::from_response(int status, const std::string& body) {
 		err.code = ErrorCode::Unknown;
 	}
 
-	// Try to parse Open-Meteo error JSON response
+	// Try to parse Open-Meteo error JSON response (Glaze).
 	// Format: {"error": true, "reason": "..."}
-	try {
-		nlohmann::json j = nlohmann::json::parse(body);
-		if (j.contains("reason") && j["reason"].is_string()) {
-			err.message = j["reason"].get<std::string>();
+	glz::generic root{};
+	glz::error_ctx ec = glz::read_json(root, body);
+	if (!ec && root.is_object()) {
+		const glz::generic::object_t& obj = root.get_object();
+		glz::generic::object_t::const_iterator reason_it = obj.find("reason");
+		if (reason_it != obj.end() && reason_it->second.is_string()) {
+			err.message = reason_it->second.get<std::string>();
 			err.detail = err.message;
 		}
-	} catch (...) {
+	} else {
 		// Not valid JSON -- use raw body as message
 		err.message = body.substr(0, 256);
 	}
