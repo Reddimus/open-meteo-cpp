@@ -6,6 +6,31 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: JSON parsing migrated from `nlohmann/json` v3.11.3 to
+  [`Glaze`](https://github.com/stephenberry/glaze) v7.6.0. The public
+  client API (`OpenMeteoClient::get_forecast` etc.) is unchanged.
+  Internal `from_json(const nlohmann::json&, T&)` overloads have been
+  replaced with `deserialize_<T>(std::string_view, T&) -> Result<void>`
+  in the `open_meteo::` namespace. The transitional `json_string` /
+  `json_int` / `json_double` helpers in `models/common.hpp` are gone
+  (no external consumers). Benchmark: 3.4-4.0x parse speedup on a
+  representative 8 KB forecast payload (nlohmann ~150 us/op → Glaze
+  ~40 us/op on x86_64-v3, GCC 13.3, -O3 -DNDEBUG).
+- C++23 baseline reaffirmed — Glaze requires C++23 for its
+  compile-time reflection path. `CMakeLists.txt` already enforced this.
+
+### Added
+
+- `tests/glaze_test.cpp` — verifies parse-output shape parity with the
+  pre-migration behavior (string-vs-numeric variable detection, NaN-for-
+  null on numeric arrays, optional-units handling, geocoding optional
+  fields, seasonal extras).
+- `tests/parse_benchmark.cpp` — parse-throughput regression guard. Caps
+  at 200 us/op (≈5x slower than pre-migration nlohmann baseline) with a
+  30s ctest timeout.
+
 ## [0.1.3] - 2026-05-10
 
 ### Added

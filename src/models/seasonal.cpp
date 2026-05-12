@@ -5,50 +5,38 @@
 
 #include "open_meteo/models/common.hpp"
 
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
+
+#include "common_glaze_detail.hpp"
 
 namespace open_meteo {
 
-namespace {
-
-std::optional<TimeseriesData> parse_timeseries(const nlohmann::json& j, const char* key) {
-	if (!j.contains(key) || !j[key].is_object()) {
-		return std::nullopt;
+Result<void> deserialize_seasonal_response(std::string_view body, SeasonalResponse& out) {
+	glz::generic root{};
+	glz::error_ctx ec = glz::read_json(root, body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
-	TimeseriesData ts;
-	from_json(j[key], ts);
-	return ts;
-}
 
-std::optional<std::unordered_map<std::string, std::string>> parse_units_map(const nlohmann::json& j,
-																			const char* key) {
-	if (!j.contains(key) || !j[key].is_object()) {
-		return std::nullopt;
-	}
-	std::unordered_map<std::string, std::string> units;
-	for (const auto& [k, v] : j[key].items()) {
-		if (v.is_string()) {
-			units[k] = v.get<std::string>();
-		}
-	}
-	return units;
-}
+	// Base Location + standard WeatherResponse timeseries blocks
+	detail::populate_location(root, static_cast<Location&>(out));
+	out.hourly = detail::grab_timeseries(root, "hourly");
+	out.daily = detail::grab_timeseries(root, "daily");
+	out.current = detail::grab_timeseries(root, "current");
+	out.hourly_units = detail::grab_units_map(root, "hourly_units");
+	out.daily_units = detail::grab_units_map(root, "daily_units");
+	out.current_units = detail::grab_units_map(root, "current_units");
 
-} // namespace
+	// Seasonal-specific extensions
+	out.six_hourly = detail::grab_timeseries(root, "six_hourly");
+	out.weekly = detail::grab_timeseries(root, "weekly");
+	out.monthly = detail::grab_timeseries(root, "monthly");
+	out.six_hourly_units = detail::grab_units_map(root, "six_hourly_units");
+	out.weekly_units = detail::grab_units_map(root, "weekly_units");
+	out.monthly_units = detail::grab_units_map(root, "monthly_units");
 
-void from_json(const nlohmann::json& j, SeasonalResponse& resp) {
-	// Parse base WeatherResponse fields
-	from_json(j, static_cast<WeatherResponse&>(resp));
-
-	// Parse seasonal-specific timeseries blocks
-	resp.six_hourly = parse_timeseries(j, "six_hourly");
-	resp.weekly = parse_timeseries(j, "weekly");
-	resp.monthly = parse_timeseries(j, "monthly");
-
-	// Parse seasonal-specific unit maps
-	resp.six_hourly_units = parse_units_map(j, "six_hourly_units");
-	resp.weekly_units = parse_units_map(j, "weekly_units");
-	resp.monthly_units = parse_units_map(j, "monthly_units");
+	return {};
 }
 
 } // namespace open_meteo

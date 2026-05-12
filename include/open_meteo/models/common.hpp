@@ -4,10 +4,20 @@
 
 /// @file common.hpp
 /// @brief Common model types shared across all Open-Meteo API responses
+///
+/// Backed by [Glaze](https://github.com/stephenberry/glaze) for JSON
+/// deserialization. The public surface here is the struct definitions
+/// plus the `deserialize_*(std::string_view, T&)` family used by
+/// `api/client.cpp`. The previous `from_json(const nlohmann::json&, T&)`
+/// overloads have been removed; downstream consumers (`crawler`,
+/// `kalshi-trader`) only use the high-level client methods, never these
+/// internal helpers.
 
-#include <nlohmann/json_fwd.hpp>
+#include "open_meteo/error.hpp"
+
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -47,21 +57,14 @@ struct WeatherResponse : Location {
 	std::optional<std::unordered_map<std::string, std::string>> current_units;
 };
 
-// ===== JSON helpers =====
+// ===== Deserializers (Glaze-backed, return Result<void>) =====
+//
+// Each function parses a JSON body (string_view, zero-copy where possible)
+// into the corresponding struct. On failure returns Error::parse(...).
 
-/// Safely extract a string from JSON (handles null/missing values)
-[[nodiscard]] std::string json_string(const nlohmann::json& j, const char* key);
+[[nodiscard]] Result<void> deserialize_location(std::string_view body, Location& out);
 
-/// Safely extract an int from JSON (handles null/missing values)
-[[nodiscard]] int json_int(const nlohmann::json& j, const char* key, int def = 0);
-
-/// Safely extract a double from JSON (handles null/missing values)
-[[nodiscard]] double json_double(const nlohmann::json& j, const char* key, double def = 0.0);
-
-// ===== from_json declarations =====
-
-void from_json(const nlohmann::json& j, Location& loc);
-void from_json(const nlohmann::json& j, TimeseriesData& ts);
-void from_json(const nlohmann::json& j, WeatherResponse& resp);
+[[nodiscard]] Result<void> deserialize_weather_response(std::string_view body,
+														WeatherResponse& out);
 
 } // namespace open_meteo
