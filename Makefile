@@ -6,7 +6,7 @@ CPP_AUTO_AUDIT := python3 tools/cpp_auto_audit.py
 CMAKE := cmake
 NPROC := $(shell nproc 2>/dev/null || echo 4)
 
-.PHONY: all build debug test lint clean configure help format coverage \
+.PHONY: all build debug test lint clean configure help format pre-commit install-hooks coverage \
 	run-forecast run-historical run-geocoding run-air-quality
 
 # Default target
@@ -69,6 +69,23 @@ coverage:
 	@lcov --remove build-coverage/coverage.info '/usr/*' '*/build-coverage/_deps/*' --output-file build-coverage/coverage_filtered.info --ignore-errors unused
 	@genhtml build-coverage/coverage_filtered.info --output-directory build-coverage/coverage-report
 	@echo "Coverage report: build-coverage/coverage-report/index.html"
+
+# pre-commit: auto-format, then lint. Run before every commit to avoid
+# the recurring "push -> CI clang-format/auto-audit fail -> follow-up fix
+# PR" loop. Idempotent — `format` re-running is a no-op.
+pre-commit: format lint
+
+# install-hooks: drop a .git/hooks/pre-commit shim that runs `make pre-commit`
+# on every `git commit`. One-shot operator setup; idempotent.
+install-hooks:
+	@mkdir -p .git/hooks
+	@if [ -f .git/hooks/pre-commit ] && grep -q 'make pre-commit' .git/hooks/pre-commit 2>/dev/null; then \
+		echo "pre-commit hook already installed"; \
+	else \
+		printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit; \
+		chmod +x .git/hooks/pre-commit; \
+		echo "Installed .git/hooks/pre-commit -> make pre-commit"; \
+	fi
 
 # Clean build artifacts
 clean:
