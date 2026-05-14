@@ -113,17 +113,17 @@ target_link_libraries(your_app PRIVATE open_meteo)
 | Endpoint | Method | Status |
 |----------|--------|--------|
 | [Forecast](https://open-meteo.com/en/docs) | `get_forecast()` | ✅ |
-| [Historical Weather](https://open-meteo.com/en/docs/historical-weather-api) | `get_historical_weather()` | ✅ |
+| [Historical Weather](https://open-meteo.com/en/docs/historical-weather-api) | `get_historical()` | ✅ |
 | [Historical Forecast](https://open-meteo.com/en/docs/historical-forecast-api) | `get_historical_forecast()` | ✅ |
 | [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) | `get_previous_runs()` | ✅ |
 | [Ensemble](https://open-meteo.com/en/docs/ensemble-api) | `get_ensemble()` | ✅ |
 | [Marine](https://open-meteo.com/en/docs/marine-weather-api) | `get_marine()` | ✅ |
 | [Air Quality](https://open-meteo.com/en/docs/air-quality-api) | `get_air_quality()` | ✅ |
 | [Climate](https://open-meteo.com/en/docs/climate-api) | `get_climate()` | ✅ |
-| [Seasonal Forecast](https://open-meteo.com/en/docs/seasonal-forecast-api) | `get_seasonal_forecast()` | ✅ |
+| [Seasonal Forecast](https://open-meteo.com/en/docs/seasonal-forecast-api) | `get_seasonal()` | ✅ |
 | [Flood](https://open-meteo.com/en/docs/flood-api) | `get_flood()` | ✅ |
 | [Elevation](https://open-meteo.com/en/docs/elevation-api) | `get_elevation()` | ✅ |
-| [Geocoding](https://open-meteo.com/en/docs/geocoding-api) | `search_location()` | ✅ |
+| [Geocoding](https://open-meteo.com/en/docs/geocoding-api) | `get_geocoding()` | ✅ |
 
 ## Examples
 
