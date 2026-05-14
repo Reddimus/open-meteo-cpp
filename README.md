@@ -140,14 +140,14 @@ make run-air-quality       # Air quality data
 graph TD
     A[your_app] -->|"target_link_libraries(PRIVATE open_meteo)"| B[open_meteo<br/>INTERFACE aggregator]
     B --> C[open_meteo_api<br/>OpenMeteoClient]
-    B --> D[open_meteo_models<br/>Response types + from_json]
+    B --> D[open_meteo_models<br/>Response types + Glaze meta]
     B --> E[open_meteo_http<br/>libcurl Pimpl wrapper]
     B --> F[open_meteo_core<br/>Error, RateLimiter, Retry]
     C --> D
     C --> E
     C --> F
     E --> G[libcurl]
-    D --> H[nlohmann/json]
+    D --> H[Glaze]
 ```
 
 ### Request Flow
@@ -180,7 +180,7 @@ sequenceDiagram
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | [libcurl](https://curl.se/libcurl/) | HTTP client | System (`find_package`) |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON parsing | FetchContent |
+| [Glaze](https://github.com/stephenberry/glaze) | JSON parsing (compile-time reflection, ~4x faster than nlohmann on Open-Meteo payloads) | FetchContent (v7.6.0) |
 | [GoogleTest](https://github.com/google/googletest) | Testing | FetchContent |
 
 ## Rate Limits (Free Tier)
@@ -199,7 +199,7 @@ The SDK automatically respects these limits via the built-in token bucket rate l
 - [Open-Meteo SDK Repository](https://github.com/open-meteo/sdk) — FlatBuffers schemas and official SDK bindings
 - [Open-Meteo Pricing & Rate Limits](https://open-meteo.com/en/pricing) — Free tier limits and commercial plans
 - [ERA5 Reanalysis](https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5) — Historical weather data source (1940-present)
-- [nlohmann/json](https://github.com/nlohmann/json) — JSON parsing library used by this SDK
+- [Glaze](https://github.com/stephenberry/glaze) — JSON parsing library used by this SDK (compile-time reflection, replaced nlohmann/json in v0.2.0, 2026-05-12)
 - [libcurl](https://curl.se/libcurl/) — HTTP client library used by this SDK
 
 ## Contributing
