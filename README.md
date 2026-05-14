@@ -98,7 +98,7 @@ make clean        # Clean build artifacts
 include(FetchContent)
 FetchContent_Declare(open_meteo_cpp
     GIT_REPOSITORY https://github.com/Reddimus/open-meteo-cpp.git
-    GIT_TAG v0.1.3
+    GIT_TAG v0.2.0
     GIT_SHALLOW TRUE
 )
 set(OPEN_METEO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
