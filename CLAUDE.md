@@ -33,7 +33,7 @@ make run-air-quality   # examples/example_air_quality.cpp
 - Namespace: `open_meteo`
 - **No `auto`** for local declarations — use explicit types. Carve-outs: structured bindings (`auto& [k, v]`), lambda closures, iterator-like results from `.find/.begin/.end`. Enforced by `tools/cpp_auto_audit.py` (prints to **stderr**, easy to miss; check exit code or run directly).
 - Time-series response shape: `HourlyData{ time: vector<string>, values: unordered_map<string, vector<double>> }` — index `time[i]` corresponds to `values["temperature_2m"][i]` etc.
-- Models declare `from_json` in headers, implement in `.cpp` files.
+- Model parsing is exposed via the `deserialize_*(std::string_view, T&) -> Result<void>` family declared in `include/open_meteo/models/*.hpp` and implemented in matching `src/models/*.cpp`. The pre-migration `from_json(const nlohmann::json&, T&)` overloads were removed in the 2026-05-11 Glaze cutover; downstream consumers use `OpenMeteoClient::get_*` directly, never the helpers. Dynamic-key timeseries blocks (user-driven variable names like `temperature_2m`/`precipitation`) walk a `glz::generic` AST — search for `TODO(glaze):` markers.
 
 ## CI
 
