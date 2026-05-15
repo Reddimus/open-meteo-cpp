@@ -6,6 +6,29 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
+  max for C++). Sibling to `.clang-format`; covers editors that don't
+  read `.clang-format` (#14).
+- `make pre-commit` + `make install-hooks` targets — auto-format + lint
+  via git pre-commit hook (#8).
+
+### Changed
+
+- README install snippet pinned to v0.2.0 (#9, #10).
+- README API method names: 3 wrong names corrected to match
+  `client.hpp` (#11).
+- CLAUDE.md endpoint list rewritten to match `include/open_meteo/client.hpp`
+  — all 12 endpoints (forecast, historical, historical-forecast,
+  previous-runs, ensemble, marine, air-quality, climate, seasonal,
+  flood, elevation, geocoding) now listed (#12).
+
+### Removed
+
+- All stale `nlohmann/from_json` references from README + CLAUDE.md
+  (the Glaze migration shipped in v0.2.0 made these obsolete) (#13).
+
 ## [0.2.0] - 2026-05-12
 
 ### Changed
