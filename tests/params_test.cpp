@@ -52,5 +52,25 @@ TEST(PreviousRunsParamsTest, KeepsMultiModelRequestsAsModelsList) {
 	EXPECT_EQ(query.find("model_name="), std::string::npos);
 }
 
+// Regression guard for the contract open-meteo-data's native per-member
+// ensemble backend depends on: EnsembleParams must serialize a multi-model
+// list, a >=16-day horizon, and per-member daily tmax/tmin.
+TEST(EnsembleParamsTest, SerializesMultiModelDailyHorizon) {
+	EnsembleParams params;
+	params.latitude = 40.7128;
+	params.longitude = -74.0060;
+	params.models =
+		std::vector<std::string>{"gfs_seamless", "ecmwf_ifs025", "icon_seamless", "gem_seamless"};
+	params.forecast_days = 16;
+	params.daily = std::vector<std::string>{"temperature_2m_max", "temperature_2m_min"};
+
+	const std::string query = params.build_query_string();
+
+	EXPECT_NE(query.find("models=gfs_seamless,ecmwf_ifs025,icon_seamless,gem_seamless"),
+			  std::string::npos);
+	EXPECT_NE(query.find("forecast_days=16"), std::string::npos);
+	EXPECT_NE(query.find("daily=temperature_2m_max,temperature_2m_min"), std::string::npos);
+}
+
 } // namespace
 } // namespace open_meteo
