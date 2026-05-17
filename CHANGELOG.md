@@ -6,8 +6,18 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-17
+
 ### Added
 
+- `examples/example_ensemble.cpp` + `make run-ensemble` — multi-model
+  ensemble reference. Plus an `EnsembleParamsTest` regression guard
+  asserting `EnsembleParams` serializes a multi-model `models=` list, a
+  `forecast_days>=16` horizon, and per-member
+  `daily=temperature_2m_max,temperature_2m_min`. This pins the exact
+  request contract that open-meteo-data's native per-member ensemble
+  backend depends on (the SDK already supported it; this release makes
+  it a guarded, documented, taggable boundary for consumers to pin).
 - `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
   max for C++). Sibling to `.clang-format`; covers editors that don't
   read `.clang-format` (#14).
@@ -158,7 +168,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Built-in rate limiting + retry with exponential backoff
 - Mermaid architecture diagrams + citations in README
 
-[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.1...v0.1.2

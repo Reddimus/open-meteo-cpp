@@ -7,7 +7,7 @@ CMAKE := cmake
 NPROC := $(shell nproc 2>/dev/null || echo 4)
 
 .PHONY: all build debug test lint clean configure help format pre-commit install-hooks coverage \
-	run-forecast run-historical run-geocoding run-air-quality
+	run-forecast run-historical run-geocoding run-air-quality run-ensemble
 
 # Default target
 all: build
@@ -107,6 +107,9 @@ run-geocoding: build
 run-air-quality: build
 	@./$(BUILD_DIR)/examples/example_air_quality
 
+run-ensemble: build
+	@./$(BUILD_DIR)/examples/example_ensemble
+
 # Help
 help:
 	@echo "Open-Meteo C++ SDK Build System"
@@ -126,6 +129,7 @@ help:
 	@echo "  make run-historical  - Run historical weather example"
 	@echo "  make run-geocoding   - Run geocoding example"
 	@echo "  make run-air-quality - Run air quality example"
+	@echo "  make run-ensemble    - Run multi-model ensemble example"
 
 # Markdown linting
 lint-md:
