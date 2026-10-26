@@ -56,3 +56,7 @@ target_link_libraries(open_meteo INTERFACE open_meteo_core open_meteo_http open_
 add_library(open_meteo::open_meteo ALIAS open_meteo)
 target_include_directories(open_meteo_models SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
 target_include_directories(open_meteo_core SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+
+if(WIN32)
+    target_compile_definitions(open_meteo_http PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
