@@ -6,6 +6,8 @@
 #include <glaze/glaze.hpp>
 #include <string_view>
 
+#include "../json.hpp"
+
 namespace open_meteo {
 
 // GeocodingResult / GeocodingResponse are fully-statically-typed. Use Glaze's
@@ -35,11 +37,12 @@ struct glz::meta<open_meteo::GeocodingResponse> {
 namespace open_meteo {
 
 Result<void> deserialize_geocoding_response(std::string_view body, GeocodingResponse& out) {
-	constexpr glz::opts opts{.error_on_unknown_keys = false};
-	glz::error_ctx ec = glz::read<opts>(out, body);
+	GeocodingResponse parsed{};
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

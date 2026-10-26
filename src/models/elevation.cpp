@@ -6,6 +6,8 @@
 #include <glaze/glaze.hpp>
 #include <string_view>
 
+#include "../json.hpp"
+
 namespace open_meteo {
 
 // ElevationResponse is fully-statically-typed (single double array). The
@@ -23,11 +25,12 @@ struct glz::meta<open_meteo::ElevationResponse> {
 namespace open_meteo {
 
 Result<void> deserialize_elevation_response(std::string_view body, ElevationResponse& out) {
-	constexpr glz::opts opts{.error_on_unknown_keys = false};
-	glz::error_ctx ec = glz::read<opts>(out, body);
+	ElevationResponse parsed{};
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

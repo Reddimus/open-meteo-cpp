@@ -11,7 +11,7 @@ one.
 
 Security fixes are made on the latest published `vX.Y.Z` tag. Older
 tags are not back-patched — bump your `FetchContent_Declare(... GIT_TAG ...)`
-pin or your `find_package(open-meteo-cpp X.Y.Z REQUIRED)` constraint to
+pin or your `find_package(open_meteo X.Y.Z REQUIRED)` constraint to
 the latest minor on the same major as part of the upgrade.
 
 | Version    | Supported          |
@@ -47,5 +47,5 @@ You can expect:
 - Operational issues (rate-limit handling, network blips) — file a
   regular issue.
 - Theoretical issues against dependencies — report them upstream
-  (`openssl`, `libcurl`, `nlohmann/json`, `googletest`). We pin via
+  (`openssl`, `libcurl`, `Glaze`, `googletest`). We pin via
   FetchContent and bump on credible advisories.

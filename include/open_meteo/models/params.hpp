@@ -19,6 +19,9 @@ namespace open_meteo {
 
 /// URL-encode a single parameter and append to query string
 void append_param(std::string& query, const std::string& key, const std::string& value);
+inline void append_param(std::string& query, const std::string& key, const char* value) {
+	append_param(query, key, std::string(value ? value : ""));
+}
 
 /// Append a comma-separated list parameter
 void append_list_param(std::string& query, const std::string& key,

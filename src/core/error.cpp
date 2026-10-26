@@ -6,6 +6,8 @@
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
 
+#include "../json.hpp"
+
 namespace open_meteo {
 
 Error Error::from_response(int status, const std::string& body) {
@@ -19,7 +21,7 @@ Error Error::from_response(int status, const std::string& body) {
 		err.code = ErrorCode::InvalidRequest;
 	} else if (status == 429) {
 		err.code = ErrorCode::RateLimited;
-	} else if (status >= 500) {
+	} else if (status >= 500 && status < 600) {
 		err.code = ErrorCode::ServerError;
 	} else {
 		err.code = ErrorCode::Unknown;
@@ -28,7 +30,7 @@ Error Error::from_response(int status, const std::string& body) {
 	// Try to parse Open-Meteo error JSON response (Glaze).
 	// Format: {"error": true, "reason": "..."}
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (!ec && root.is_object()) {
 		const glz::generic::object_t& obj = root.get_object();
 		glz::generic::object_t::const_iterator reason_it = obj.find("reason");

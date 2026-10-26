@@ -10,6 +10,21 @@ namespace open_meteo {
 // ===== Query string builder helpers =====
 
 namespace {
+std::string encode(std::string_view value) {
+	constexpr char hex[] = "0123456789ABCDEF";
+	std::string out;
+	for (unsigned char c : value) {
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+			c == '-' || c == '_' || c == '.' || c == '~') {
+			out += static_cast<char>(c);
+		} else {
+			out += '%';
+			out += hex[c >> 4];
+			out += hex[c & 15];
+		}
+	}
+	return out;
+}
 
 void ensure_separator(std::string& query) {
 	if (query.empty()) {
@@ -23,9 +38,9 @@ void ensure_separator(std::string& query) {
 
 void append_param(std::string& query, const std::string& key, const std::string& value) {
 	ensure_separator(query);
-	query += key;
+	query += encode(key);
 	query += '=';
-	query += value;
+	query += encode(value);
 }
 
 void append_list_param(std::string& query, const std::string& key,
@@ -34,13 +49,13 @@ void append_list_param(std::string& query, const std::string& key,
 		return;
 	}
 	ensure_separator(query);
-	query += key;
+	query += encode(key);
 	query += '=';
 	for (std::size_t i = 0; i < values.size(); ++i) {
 		if (i > 0) {
 			query += ',';
 		}
-		query += values[i];
+		query += encode(values[i]);
 	}
 }
 

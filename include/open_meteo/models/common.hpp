@@ -2,16 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-/// @file common.hpp
-/// @brief Common model types shared across all Open-Meteo API responses
-///
-/// Backed by [Glaze](https://github.com/stephenberry/glaze) for JSON
-/// deserialization. The public surface here is the struct definitions
-/// plus the `deserialize_*(std::string_view, T&)` family used by
-/// `api/client.cpp`. The previous `from_json(const nlohmann::json&, T&)`
-/// overloads have been removed; downstream consumers (`crawler`,
-/// `kalshi-trader`) only use the high-level client methods, never these
-/// internal helpers.
+/// Shared response models and bounded JSON deserializers.
 
 #include "open_meteo/error.hpp"
 
@@ -34,7 +25,7 @@ struct Location {
 	std::string timezone_abbreviation;
 };
 
-/// Time-indexed data arrays (hourly, daily, current, etc.)
+/// Time-indexed data; current conditions use one-element arrays.
 ///
 /// Open-Meteo returns a "time" array alongside parallel arrays for each
 /// requested variable. Numeric variables go into `values`; string-typed

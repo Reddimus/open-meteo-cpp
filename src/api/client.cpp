@@ -3,6 +3,7 @@
 
 #include "open_meteo/client.hpp"
 
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -29,16 +30,22 @@ OpenMeteoClient::OpenMeteoClient(OpenMeteoClient&&) noexcept = default;
 OpenMeteoClient& OpenMeteoClient::operator=(OpenMeteoClient&&) noexcept = default;
 
 HttpClient& OpenMeteoClient::http_client() {
+	if (!impl_) {
+		throw std::logic_error("Moved-from OpenMeteoClient");
+	}
 	return impl_->http;
 }
 
 const HttpClient& OpenMeteoClient::http_client() const {
+	if (!impl_) {
+		throw std::logic_error("Moved-from OpenMeteoClient");
+	}
 	return impl_->http;
 }
 
 std::string OpenMeteoClient::resolve_url(std::string_view base_url) const {
 	std::string url(base_url);
-	if (impl_->config.use_customer_endpoints) {
+	if (impl_ && impl_->config.use_customer_endpoints) {
 		// Replace "https://" prefix with "https://customer-"
 		// e.g. "https://api.open-meteo.com" -> "https://customer-api.open-meteo.com"
 		constexpr std::string_view https_prefix = "https://";
@@ -50,20 +57,17 @@ std::string OpenMeteoClient::resolve_url(std::string_view base_url) const {
 }
 
 Result<HttpResponse> OpenMeteoClient::do_get(const std::string& full_url) {
-	(void)impl_->rate_limiter.acquire();
-
-	// The HttpClient expects a path relative to base_url, but for Open-Meteo
-	// we need full URLs since each endpoint has a different base. We pass the
-	// full URL minus the configured base_url prefix, OR we construct the path
-	// ourselves. Since each endpoint has a unique domain, we pass the complete
-	// URL as the path and rely on HttpClient.get() which prepends base_url.
-	//
-	// Strategy: strip the HttpClient's base_url from the front of full_url,
-	// or if different domain, set path to the full URL (HttpClient handles
-	// base_url="" case by using path as-is).
-	//
-	// Since we configure HttpClient with an empty base_url, we pass the full URL.
-	return with_retry([&]() { return impl_->http.get(full_url); }, impl_->retry_policy);
+	if (!impl_) {
+		return std::unexpected(Error::network("Client not initialized"));
+	}
+	return with_retry(
+		[&]() -> Result<HttpResponse> {
+			if (!impl_->rate_limiter.acquire()) {
+				return std::unexpected(Error::rate_limited("Rate-limit wait exceeded"));
+			}
+			return impl_->http.get(full_url);
+		},
+		impl_->retry_policy);
 }
 
 // ===== Endpoint implementations =====

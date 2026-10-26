@@ -52,6 +52,9 @@ public:
 	[[nodiscard]] const Config& config() const noexcept;
 
 private:
+	using Clock = std::chrono::steady_clock;
+	[[nodiscard]] bool acquire_until(std::optional<Clock::time_point> deadline);
+	[[nodiscard]] std::optional<Clock::duration> take_or_wait_time() noexcept;
 	void refill() noexcept;
 
 	Config config_;

@@ -144,8 +144,12 @@ public:
 	// ===== Accessors =====
 
 	/// Access the underlying HTTP client
-	[[nodiscard]] HttpClient& http_client();
-	[[nodiscard]] const HttpClient& http_client() const;
+	[[nodiscard]] /// Throws std::logic_error on a moved-from client.
+	HttpClient&
+	http_client();
+	[[nodiscard]] /// Throws std::logic_error on a moved-from client.
+	const HttpClient&
+	http_client() const;
 
 private:
 	struct Impl;
