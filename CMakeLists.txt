@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
-project(open-meteo-cpp VERSION 0.3.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.31)
+project(open-meteo-cpp VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,9 +10,9 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Options
-option(OPEN_METEO_BUILD_TESTS "Build tests" ON)
-option(OPEN_METEO_BUILD_EXAMPLES "Build examples" ON)
-option(OPEN_METEO_ENABLE_LTO "Enable Link Time Optimization" ON)
+option(OPEN_METEO_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(OPEN_METEO_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
+option(OPEN_METEO_ENABLE_LTO "Enable Link Time Optimization" ${PROJECT_IS_TOP_LEVEL})
 option(OPEN_METEO_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
 
 # Compiler warnings. -Wpedantic / -Wextra are GCC/Clang only;
@@ -20,12 +20,6 @@ option(OPEN_METEO_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
 # for the Windows path.
 if(NOT MSVC)
     add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# Aggressive optimization flags for Release builds. MSVC has its own
-# Release defaults; only override for GCC/Clang.
-if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 endif()
 
 # Enable LTO if requested and supported
@@ -40,24 +34,9 @@ if(OPEN_METEO_ENABLE_LTO)
     endif()
 endif()
 
-# CPU-specific tuning.
-# OPEN_METEO_NATIVE_ARCH=ON → -march=native (only when you know the deploy CPU).
-# Default: -march=x86-64-v3 (2017+ x86 baseline — AVX2, BMI2, FMA). Covers every
-# server we deploy on and matches what our downstream service Dockerfiles use,
-# so FetchContent-consumed builds produce the same codegen as stand-alone ones.
-if(NOT MSVC)
-    if(OPEN_METEO_NATIVE_ARCH)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-        message(STATUS "Using -march=native for CPU-specific optimizations")
-    else()
-        include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
-        if(COMPILER_SUPPORTS_X86_64_V3)
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
-        else()
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
-        endif()
-    endif()
+# Portable defaults; native tuning is explicit.
+if(OPEN_METEO_NATIVE_ARCH AND NOT MSVC)
+    add_compile_options($<$<CONFIG:Release>:-march=native>)
 endif()
 
 # Sanitizer support
@@ -77,7 +56,7 @@ if(OPEN_METEO_ENABLE_COVERAGE)
 endif()
 
 # Find dependencies
-find_package(CURL REQUIRED)
+find_package(CURL 7.85 REQUIRED)
 
 include(FetchContent)
 
@@ -87,9 +66,11 @@ include(FetchContent)
 FetchContent_Declare(
     glaze
     GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-    GIT_TAG v7.6.0
+    GIT_TAG v9.0.0
     GIT_SHALLOW TRUE
+    EXCLUDE_FROM_ALL
 )
+set(GLAZE_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glaze)
 
 # Include directories
@@ -102,9 +83,11 @@ if(OPEN_METEO_BUILD_TESTS)
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.15.2
+        GIT_TAG v1.18.0
         GIT_SHALLOW TRUE
+        EXCLUDE_FROM_ALL
     )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
     enable_testing()

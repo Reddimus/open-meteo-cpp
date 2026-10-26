@@ -6,6 +6,25 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+### Fixed
+
+- Preserve current scalar weather conditions and replace reused parser outputs.
+- Validate complete bounded JSON and malformed unknown fields.
+- Encode query values and API keys; preserve literal string parameters.
+- Bound HTTP bodies and protocols; contain C callback allocation failures.
+- Normalize rate settings, honor zero waits, and pace every retry.
+- Cap retry jitter and extreme duration arithmetic.
+- Preserve parent build flags, portable CPUs, and custom Git hooks.
+
+### Changed
+
+- Require CMake 3.31 and thread-safe libcurl 7.85+; update Glaze to 9.0.0.
+- Default tests, examples, and LTO to OFF in embedded builds.
+- Add installed/FetchContent consumers and portable loopback HTTP tests.
+- Correct setup, API coverage, error, and quota documentation.
+
 ## [0.3.0] - 2026-05-17
 
 ### Added
@@ -93,7 +112,7 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `build-windows` job added via vcpkg (parity with the rest of the
   SDK family).
 - `release.yml` body sourced from this CHANGELOG via `--notes-file`
-  so inline ` `code` ` spans survive
+  so inline code spans survive
   ([`03e4f82`](https://github.com/Reddimus/open-meteo-cpp/commit/03e4f82)).
 - Tag/CMakeLists `VERSION` drift caught at release time
   ([`eea9a19`](https://github.com/Reddimus/open-meteo-cpp/commit/eea9a19)).
@@ -168,7 +187,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Built-in rate limiting + retry with exponential backoff
 - Mermaid architecture diagrams + citations in README
 
-[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/Reddimus/open-meteo-cpp/compare/v0.1.2...v0.1.3

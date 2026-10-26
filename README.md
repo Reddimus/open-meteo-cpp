@@ -7,23 +7,25 @@
 
 C++23 SDK for the [Open-Meteo](https://open-meteo.com/) weather API.
 
-Modern, type-safe client covering all 12 Open-Meteo endpoints with `std::expected` error handling, built-in rate limiting, retry with exponential backoff, and both JSON and FlatBuffers response support.
+JSON client for 12 core API families, with `std::expected` errors, rate limiting, and bounded retries. Additional upstream APIs and request fields are not fully covered.
 
 ## Quick Start
 
 ```cpp
 #include <open_meteo/open_meteo.hpp>
+#include <algorithm>
 #include <iostream>
+#include <string>
 
 int main() {
-    open_meteo::OpenMeteoClient client;
+    open_meteo::OpenMeteoClient client{open_meteo::OpenMeteoClient::Config{}};
 
     open_meteo::ForecastParams params;
     params.latitude = 40.7128;
     params.longitude = -74.0060;
     params.hourly = {"temperature_2m", "precipitation", "wind_speed_10m"};
     params.forecast_days = 3;
-    params.temperature_unit = open_meteo::TemperatureUnit::Fahrenheit;
+    params.temperature_unit = "fahrenheit";
 
     auto result = client.get_forecast(params);
     if (!result) {
@@ -38,7 +40,7 @@ int main() {
     if (forecast.hourly) {
         auto& temps = forecast.hourly->values.at("temperature_2m");
         auto& times = forecast.hourly->time;
-        for (size_t i = 0; i < std::min(times.size(), size_t{5}); ++i) {
+        for (size_t i = 0; i < std::min({times.size(), temps.size(), size_t{5}}); ++i) {
             std::cout << times[i] << ": " << temps[i] << "°F" << std::endl;
         }
     }
@@ -47,12 +49,12 @@ int main() {
 
 ## Features
 
-- **C++23** with `std::expected<T, Error>` — no exceptions in the public API
-- **All 12 endpoints**: Forecast, Historical Weather, Historical Forecast, Previous Runs, Ensemble, Marine, Air Quality, Climate, Seasonal Forecast, Flood, Elevation, Geocoding
+- **C++23** with `std::expected<T, Error>` for request and parse errors; allocation failures can throw
+- **12 core API families**: Forecast, Historical Weather, Historical Forecast, Previous Runs, Ensemble, Marine, Air Quality, Climate, Seasonal Forecast, Flood, Elevation, Geocoding
 - **Rate limiting**: Token bucket (configurable, defaults to 600 req/min for free tier)
 - **Retry**: Exponential backoff with jitter for transient failures (429, 5xx)
-- **Type-safe parameters**: Strongly typed enums for units, cell selection, models
-- **Pimpl pattern**: Stable ABI, fast compilation
+- **Parameters**: String-valued API fields; helper enums provide unit conversions
+- **Pimpl clients**: Private transport implementation
 - **Move-only client**: Efficient resource management
 - **Commercial API support**: Optional API key + customer endpoint switching
 - **Thread-safe rate limiter**: Safe for concurrent use
@@ -66,9 +68,9 @@ normalizes singleton `models={...}` inputs to that wire format, while preserving
 
 ### Requirements
 
-- C++23 compiler (GCC 13+, Clang 17+, MSVC 19.38+)
-- CMake 3.20+
-- libcurl development headers
+- C++23 compiler (GCC 13+, Clang 19+ with libstdc++, Clang 18+ with libc++, or recent MSVC)
+- CMake 3.31+
+- libcurl 7.85+ development headers and a thread-safe libcurl build
 
 ### Build
 
@@ -90,6 +92,8 @@ make clean        # Clean build artifacts
 | `OPEN_METEO_NATIVE_ARCH` | OFF | Use `-march=native` |
 | `OPEN_METEO_ENABLE_SANITIZERS` | OFF | ASan + UBSan |
 
+Tests, examples, and LTO default to OFF when embedded as a subproject. Release builds preserve parent flags and use portable CPU defaults.
+
 ## Using as a Dependency
 
 ### CMake FetchContent
@@ -98,15 +102,19 @@ make clean        # Clean build artifacts
 include(FetchContent)
 FetchContent_Declare(open_meteo_cpp
     GIT_REPOSITORY https://github.com/Reddimus/open-meteo-cpp.git
-    GIT_TAG v0.3.0
+    GIT_TAG v0.4.0
     GIT_SHALLOW TRUE
 )
 set(OPEN_METEO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(OPEN_METEO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(open_meteo_cpp)
 
-target_link_libraries(your_app PRIVATE open_meteo)
+target_link_libraries(your_app PRIVATE open_meteo::open_meteo)
 ```
+
+Installed packages use `find_package(open_meteo CONFIG REQUIRED)` and the same namespaced target. `make consumers` checks both modes.
+
+Current scalar conditions are exposed as one-element arrays. JSON parsers require a complete object and replace previous outputs on success. HTTP bodies default to a 64 MiB decompressed limit (`max_response_bytes=0` disables it).
 
 ## API Coverage
 
@@ -163,9 +171,9 @@ sequenceDiagram
 
     App->>Client: get_forecast(params)
     Client->>Client: build_query_string(params)
-    Client->>RL: acquire()
-    RL-->>Client: token granted
-    Client->>Retry: with_retry(http_get)
+    Client->>Retry: with_retry(rate_limited_get)
+    Retry->>RL: acquire() per attempt
+    RL-->>Retry: token granted
     Retry->>HTTP: GET /v1/forecast?lat=...
     HTTP->>API: HTTPS request
     API-->>HTTP: JSON response
@@ -180,7 +188,7 @@ sequenceDiagram
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | [libcurl](https://curl.se/libcurl/) | HTTP client | System (`find_package`) |
-| [Glaze](https://github.com/stephenberry/glaze) | JSON parsing (compile-time reflection, ~4x faster than nlohmann on Open-Meteo payloads) | FetchContent (v7.6.0) |
+| [Glaze](https://github.com/stephenberry/glaze) | JSON parsing | FetchContent (v9.0.0) |
 | [GoogleTest](https://github.com/google/googletest) | Testing | FetchContent |
 
 ## Rate Limits (Free Tier)
@@ -191,7 +199,7 @@ sequenceDiagram
 | Hourly | 5,000 API calls |
 | Per minute | 600 API calls |
 
-The SDK automatically respects these limits via the built-in token bucket rate limiter. For commercial use with an API key, rate limiting can be disabled or adjusted.
+The token bucket limits request pacing only; it does not track hourly or daily totals. Track those quotas in your application and adjust pacing for your plan. Every retry consumes a token.
 
 ## References
 
@@ -215,7 +223,7 @@ make format          # clang-format -i (call before pushing)
 ```
 
 CI runs the same lint+build+test on push and PR (Ubuntu 24.04 +
-macos-latest); see `.github/workflows/ci.yml`.
+macos-latest + Windows); see `.github/workflows/ci.yml`.
 
 ## License
 

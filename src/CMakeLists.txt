@@ -12,7 +12,6 @@ add_library(open_meteo_core STATIC
 target_compile_features(open_meteo_core PUBLIC cxx_std_23)
 target_include_directories(open_meteo_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -37,7 +36,6 @@ add_library(open_meteo_models STATIC
 target_link_libraries(open_meteo_models PUBLIC open_meteo_core)
 target_include_directories(open_meteo_models PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -54,3 +52,11 @@ target_include_directories(open_meteo_api PUBLIC
 # Main SDK library (combines all)
 add_library(open_meteo INTERFACE)
 target_link_libraries(open_meteo INTERFACE open_meteo_core open_meteo_http open_meteo_models open_meteo_api)
+
+add_library(open_meteo::open_meteo ALIAS open_meteo)
+target_include_directories(open_meteo_models SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+target_include_directories(open_meteo_core SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+
+if(WIN32)
+    target_compile_definitions(open_meteo_http PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()

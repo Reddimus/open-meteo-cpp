@@ -1,13 +1,14 @@
-// Copyright (c) 2026 PredictionMarketsAI
-// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "open_meteo/error.hpp"
 #include "open_meteo/http_client.hpp"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <random>
 #include <thread>
 
@@ -37,12 +38,10 @@ struct RetryResult {
 /// Determines if a response should be retried
 [[nodiscard]] inline bool should_retry(const HttpResponse& response,
 									   const RetryPolicy& policy) noexcept {
-	// Open-Meteo uses 429 for rate limiting
-	if (policy.retry_on_rate_limit && response.status_code == 429) {
-		return true;
+	if (response.status_code == 429) {
+		return policy.retry_on_rate_limit;
 	}
-	// Server errors (5xx)
-	if (policy.retry_on_server_error && response.status_code >= 500) {
+	if (policy.retry_on_server_error && response.status_code >= 500 && response.status_code < 600) {
 		return true;
 	}
 	return false;
@@ -50,10 +49,8 @@ struct RetryResult {
 
 /// Determines if an error should be retried
 [[nodiscard]] inline bool should_retry(const Error& error, const RetryPolicy& policy) noexcept {
-	if (policy.retry_on_network_error && error.code == ErrorCode::NetworkError) {
-		return true;
-	}
-	if (policy.retry_on_network_error && error.code == ErrorCode::Timeout) {
+	if (policy.retry_on_network_error &&
+		(error.code == ErrorCode::NetworkError || error.code == ErrorCode::Timeout)) {
 		return true;
 	}
 	return false;
@@ -62,31 +59,33 @@ struct RetryResult {
 /// Calculate delay for a retry attempt with exponential backoff and jitter
 [[nodiscard]] inline std::chrono::milliseconds calculate_retry_delay(std::uint8_t attempt,
 																	 const RetryPolicy& policy) {
-	// Exponential backoff
-	double delay_ms = static_cast<double>(policy.initial_delay.count());
+	const std::chrono::milliseconds maximum =
+		std::max(policy.max_delay, std::chrono::milliseconds::zero());
+	const double max_ms = static_cast<double>(maximum.count());
+	double delay_ms = static_cast<double>(
+		std::clamp(policy.initial_delay, std::chrono::milliseconds::zero(), maximum).count());
+	const double multiplier =
+		std::isfinite(policy.backoff_multiplier) ? std::max(policy.backoff_multiplier, 0.0) : 1.0;
 	for (std::uint8_t i = 1; i < attempt; ++i) {
-		delay_ms *= policy.backoff_multiplier;
+		delay_ms = std::min(delay_ms * multiplier, max_ms);
 	}
-
-	// Cap at max delay
-	delay_ms = std::min(delay_ms, static_cast<double>(policy.max_delay.count()));
-
-	// Add jitter
-	if (policy.jitter_factor > 0) {
+	const double spread =
+		std::isfinite(policy.jitter_factor) ? std::clamp(policy.jitter_factor, 0.0, 1.0) : 0.0;
+	if (spread > 0.0) {
 		static thread_local std::mt19937 rng{std::random_device{}()};
-		std::uniform_real_distribution<double> dist(1.0 - policy.jitter_factor,
-													1.0 + policy.jitter_factor);
-		delay_ms *= dist(rng);
+		std::uniform_real_distribution<double> jitter(1.0 - spread, 1.0 + spread);
+		delay_ms *= jitter(rng);
 	}
-
+	// Comparing before conversion also handles overflow and rounded INT64_MAX.
+	if (!std::isfinite(delay_ms) || delay_ms >= max_ms) {
+		return maximum;
+	}
 	return std::chrono::milliseconds{static_cast<std::int64_t>(delay_ms)};
 }
 
 /// Execute an HTTP request with retry logic
 template <typename Operation>
 [[nodiscard]] Result<HttpResponse> with_retry(Operation&& operation, const RetryPolicy& policy) {
-	std::chrono::milliseconds total_delay{0};
-
 	for (std::uint8_t attempt = 1; attempt <= policy.max_attempts; ++attempt) {
 		Result<HttpResponse> result = operation();
 
@@ -94,7 +93,6 @@ template <typename Operation>
 			// Check if we should retry based on response
 			if (should_retry(*result, policy) && attempt < policy.max_attempts) {
 				std::chrono::milliseconds delay = calculate_retry_delay(attempt, policy);
-				total_delay += delay;
 				std::this_thread::sleep_for(delay);
 				continue;
 			}
@@ -104,7 +102,6 @@ template <typename Operation>
 		// Check if we should retry based on error
 		if (should_retry(result.error(), policy) && attempt < policy.max_attempts) {
 			std::chrono::milliseconds delay = calculate_retry_delay(attempt, policy);
-			total_delay += delay;
 			std::this_thread::sleep_for(delay);
 			continue;
 		}

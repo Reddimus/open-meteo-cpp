@@ -1,144 +1,207 @@
-// Copyright (c) 2026 PredictionMarketsAI
-// SPDX-License-Identifier: MIT
-
 #include "open_meteo/http_client.hpp"
 
+#include <algorithm>
 #include <curl/curl.h>
+#include <limits>
+#include <memory>
 
 namespace open_meteo {
+namespace {
 
-static size_t write_callback(void* ptr, size_t size, size_t nmemb, void* userdata) {
-	std::string* body = static_cast<std::string*>(userdata);
-	body->append(static_cast<char*>(ptr), size * nmemb);
-	return size * nmemb;
-}
-
-static size_t header_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
-	std::vector<std::pair<std::string, std::string>>* headers =
-		static_cast<std::vector<std::pair<std::string, std::string>>*>(userdata);
-	std::string line(buffer, size * nitems);
-
-	std::size_t colon = line.find(':');
-	if (colon != std::string::npos) {
-		std::string key = line.substr(0, colon);
-		std::string value = line.substr(colon + 1);
-		// Trim whitespace
-		std::size_t start = value.find_first_not_of(" \t\r\n");
-		std::size_t end = value.find_last_not_of(" \t\r\n");
-		if (start != std::string::npos && end != std::string::npos) {
-			value = value.substr(start, end - start + 1);
-		}
-		headers->emplace_back(std::move(key), std::move(value));
+bool is_absolute_url(std::string_view value) {
+	const std::size_t end = value.find("://");
+	if (end == std::string_view::npos || end == 0) {
+		return false;
 	}
-
-	return size * nitems;
+	const char first = value.front();
+	if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z'))) {
+		return false;
+	}
+	return value.substr(0, end).find_first_not_of(
+			   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+.-") ==
+		   std::string_view::npos;
 }
+
+class CurlRuntime {
+public:
+	CurlRuntime() : status_(curl_global_init(CURL_GLOBAL_DEFAULT)) {}
+	~CurlRuntime() {
+		if (status_ == CURLE_OK) {
+			curl_global_cleanup();
+		}
+	}
+	CurlRuntime(const CurlRuntime&) = delete;
+	CurlRuntime& operator=(const CurlRuntime&) = delete;
+	[[nodiscard]] CURLcode status() const noexcept { return status_; }
+
+private:
+	CURLcode status_;
+};
+
+std::shared_ptr<const CurlRuntime> runtime() {
+	static const std::shared_ptr<const CurlRuntime> value = std::make_shared<const CurlRuntime>();
+	return value;
+}
+
+struct ResponseSink {
+	HttpResponse response{};
+	std::size_t limit;
+	bool overflowed{false};
+};
+
+// Libcurl's C stack must never unwind through a C++ allocation failure.
+std::size_t write_callback(char* data, std::size_t size, std::size_t count,
+						   void* userdata) noexcept {
+	ResponseSink& sink = *static_cast<ResponseSink*>(userdata);
+	if (size != 0 && count > std::numeric_limits<std::size_t>::max() / size) {
+		return 0;
+	}
+	const std::size_t bytes = size * count;
+	if (sink.limit > 0 && bytes > sink.limit - sink.response.body.size()) {
+		sink.overflowed = true;
+		return 0;
+	}
+	try {
+		sink.response.body.append(data, bytes);
+	} catch (...) {
+		return 0;
+	}
+	return bytes;
+}
+
+std::size_t header_callback(char* data, std::size_t size, std::size_t count,
+							void* userdata) noexcept {
+	ResponseSink& sink = *static_cast<ResponseSink*>(userdata);
+	if (size != 0 && count > std::numeric_limits<std::size_t>::max() / size) {
+		return 0;
+	}
+	const std::size_t bytes = size * count;
+	try {
+		const std::string_view line(data, bytes);
+		if (line.starts_with("HTTP/")) {
+			sink.response.headers.clear();
+		}
+		const std::size_t colon = line.find(':');
+		if (colon != std::string_view::npos) {
+			const std::string_view raw = line.substr(colon + 1);
+			const std::size_t start = raw.find_first_not_of(" \t\r\n");
+			const std::size_t end = raw.find_last_not_of(" \t\r\n");
+			const std::string_view value = start == std::string_view::npos
+											   ? std::string_view{}
+											   : raw.substr(start, end - start + 1);
+			sink.response.headers.emplace_back(line.substr(0, colon), value);
+		}
+	} catch (...) {
+		return 0;
+	}
+	return bytes;
+}
+
+bool invalid_header(std::string_view value) {
+	return value.find_first_of(std::string_view{"\r\n\0", 3}) != std::string_view::npos;
+}
+} // namespace
 
 struct HttpClient::Impl {
+	// Kept alive until after this instance's easy handle has been closed.
+	std::shared_ptr<const CurlRuntime> global{runtime()};
 	HttpClientConfig config;
-	CURL* curl{nullptr};
-
-	Impl(HttpClientConfig cfg) : config(std::move(cfg)) {
-		curl_global_init(CURL_GLOBAL_DEFAULT);
-		curl = curl_easy_init();
-	}
-
+	CURL* curl{global->status() == CURLE_OK ? curl_easy_init() : nullptr};
+	explicit Impl(HttpClientConfig value) : config(std::move(value)) {}
 	~Impl() {
-		if (curl) {
+		if (curl != nullptr) {
 			curl_easy_cleanup(curl);
 		}
-		curl_global_cleanup();
 	}
-
 	Impl(const Impl&) = delete;
 	Impl& operator=(const Impl&) = delete;
-
-	/// Build the full URL, appending api_key as a query parameter if set.
-	/// If path is already an absolute URL (http:// or https://), it is used as-is.
-	[[nodiscard]] std::string build_url(std::string_view path) const {
-		std::string url;
-		if (path.starts_with("http://") || path.starts_with("https://")) {
-			url.assign(path);
-		} else {
-			url = config.base_url + std::string(path);
-		}
-
-		if (!config.api_key.empty()) {
-			// Determine separator: '?' if no query string yet, '&' otherwise
-			char separator = (url.find('?') == std::string::npos) ? '?' : '&';
-			url += separator;
-			url += "apikey=";
-			url += config.api_key;
-		}
-
-		return url;
-	}
 };
 
 HttpClient::HttpClient(HttpClientConfig config)
 	: impl_(std::make_unique<Impl>(std::move(config))) {}
-
 HttpClient::~HttpClient() = default;
-
 HttpClient::HttpClient(HttpClient&&) noexcept = default;
 HttpClient& HttpClient::operator=(HttpClient&&) noexcept = default;
 
 Result<HttpResponse> HttpClient::get(std::string_view path) const {
-	if (!impl_->curl) {
+	if (!impl_ || impl_->curl == nullptr) {
 		return std::unexpected(Error::network("CURL not initialized"));
 	}
-
+	const HttpClientConfig& config = impl_->config;
+	std::string url =
+		is_absolute_url(path) ? std::string(path) : config.base_url + std::string(path);
+	if (!config.api_key.empty()) {
+		char* escaped = curl_easy_escape(impl_->curl, config.api_key.c_str(), 0);
+		if (!escaped) {
+			return std::unexpected(Error::network("Could not encode API key"));
+		}
+		const std::unique_ptr<char, decltype(&curl_free)> encoded(escaped, &curl_free);
+		const std::size_t fragment = url.find('#');
+		const std::size_t end = fragment == std::string::npos ? url.size() : fragment;
+		const char separator = url.substr(0, end).find('?') == std::string::npos ? '?' : '&';
+		url.insert(end, std::string(1, separator) + "apikey=" + encoded.get());
+	}
+	if (url.find('\0') != std::string::npos || invalid_header(config.user_agent) ||
+		invalid_header(config.api_key) || config.timeout < std::chrono::seconds::zero()) {
+		return std::unexpected(Error::invalid_request("Invalid URL, header, or timeout"));
+	}
+	using Headers = std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)>;
+	const std::string accept = "Accept: application/json";
+	const Headers headers(curl_slist_append(nullptr, accept.c_str()), &curl_slist_free_all);
+	if (!headers) {
+		return std::unexpected(Error::network("Could not allocate HTTP headers"));
+	}
+	ResponseSink sink{{}, config.max_response_bytes};
 	CURL* curl = impl_->curl;
-	std::string url = impl_->build_url(path);
-	std::string body;
-	std::vector<std::pair<std::string, std::string>> response_headers;
-
 	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
-	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
-	curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, impl_->config.timeout.count());
-	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-
-	// Set User-Agent
-	if (!impl_->config.user_agent.empty()) {
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, impl_->config.user_agent.c_str());
+	const long timeout = static_cast<long>(
+		std::min(config.timeout.count(),
+				 static_cast<std::chrono::seconds::rep>(std::numeric_limits<long>::max())));
+	const long verify = config.verify_ssl ? 1L : 0L;
+	const bool configured =
+		curl_easy_setopt(curl, CURLOPT_URL, url.c_str()) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https") == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https") == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_callback) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &sink) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, &header_callback) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_HEADERDATA, &sink) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.get()) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, config.user_agent.c_str()) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "") == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, verify) == CURLE_OK &&
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, verify * 2L) == CURLE_OK;
+	if (!configured) {
+		return std::unexpected(Error::network("libcurl rejected a required option"));
 	}
-
-	// Accept JSON responses
-	struct curl_slist* headers = nullptr;
-	headers = curl_slist_append(headers, "Accept: application/json");
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-	// SSL verification
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, impl_->config.verify_ssl ? 1L : 0L);
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, impl_->config.verify_ssl ? 2L : 0L);
-
-	CURLcode res = curl_easy_perform(curl);
-	curl_slist_free_all(headers);
-
-	if (res == CURLE_OPERATION_TIMEDOUT) {
-		return std::unexpected(Error::timeout(curl_easy_strerror(res)));
+	const CURLcode result = curl_easy_perform(curl);
+	if (sink.overflowed) {
+		return std::unexpected(
+			Error::invalid_request("Response exceeded HttpClientConfig::max_response_bytes"));
 	}
-
-	if (res != CURLE_OK) {
-		return std::unexpected(Error::network(curl_easy_strerror(res)));
+	if (result == CURLE_OPERATION_TIMEDOUT) {
+		return std::unexpected(Error::timeout(curl_easy_strerror(result)));
 	}
-
-	long http_code = 0;
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-	return HttpResponse{
-		static_cast<std::int16_t>(http_code),
-		std::move(body),
-		std::move(response_headers),
-	};
+	if (result != CURLE_OK) {
+		return std::unexpected(Error::network(curl_easy_strerror(result)));
+	}
+	long status = 0;
+	if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status) != CURLE_OK) {
+		return std::unexpected(Error::network("libcurl did not return HTTP status"));
+	}
+	sink.response.status_code = static_cast<std::int16_t>(status);
+	return std::move(sink.response);
 }
 
 const HttpClientConfig& HttpClient::config() const noexcept {
-	return impl_->config;
+	if (impl_) {
+		return impl_->config;
+	}
+	static const HttpClientConfig moved_from{.base_url = {}, .user_agent = {}, .api_key = {}};
+	return moved_from;
 }
-
 } // namespace open_meteo

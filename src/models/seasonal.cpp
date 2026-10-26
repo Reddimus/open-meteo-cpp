@@ -8,18 +8,23 @@
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
 
+#include "../json.hpp"
 #include "common_glaze_detail.hpp"
 
 namespace open_meteo {
 
 Result<void> deserialize_seasonal_response(std::string_view body, SeasonalResponse& out) {
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
 
 	// Base Location + standard WeatherResponse timeseries blocks
+	if (!root.is_object()) {
+		return std::unexpected(Error::parse("Expected a JSON object"));
+	}
+	out = {};
 	detail::populate_location(root, static_cast<Location&>(out));
 	out.hourly = detail::grab_timeseries(root, "hourly");
 	out.daily = detail::grab_timeseries(root, "daily");

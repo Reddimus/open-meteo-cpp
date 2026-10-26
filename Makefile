@@ -1,7 +1,9 @@
 # Open-Meteo C++ SDK - Root Makefile
 # Wraps CMake for convenient day-to-day workflow
 
-BUILD_DIR := build
+BUILD_DIR ?= build
+BUILD_TYPE ?= Release
+CMAKE_ARGS ?=
 CPP_AUTO_AUDIT := python3 tools/cpp_auto_audit.py
 CMAKE := cmake
 NPROC := $(shell nproc 2>/dev/null || echo 4)
@@ -15,20 +17,15 @@ all: build
 # Configure CMake (if needed)
 configure:
 	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-# Configure debug build
-configure-debug:
-	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
 
 # Build all targets
 build: configure
 	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
 
 # Debug build
-debug: configure-debug
-	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
+debug:
+	@$(MAKE) build BUILD_DIR=build-debug BUILD_TYPE=Debug
 
 # Run tests
 test: build
@@ -75,21 +72,22 @@ coverage:
 # PR" loop. Idempotent — `format` re-running is a no-op.
 pre-commit: format lint
 
-# install-hooks: drop a .git/hooks/pre-commit shim that runs `make pre-commit`
-# on every `git commit`. One-shot operator setup; idempotent.
+# Install a lint-only hook while preserving custom hooks.
 install-hooks:
-	@mkdir -p .git/hooks
-	@if [ -f .git/hooks/pre-commit ] && grep -q 'make pre-commit' .git/hooks/pre-commit 2>/dev/null; then \
-		echo "pre-commit hook already installed"; \
-	else \
-		printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit; \
-		chmod +x .git/hooks/pre-commit; \
-		echo "Installed .git/hooks/pre-commit -> make pre-commit"; \
-	fi
+	@hook="$$(git rev-parse --git-path hooks)/pre-commit"; \
+	if [ -f "$$hook" ]; then \
+        case "$$(cat "$$hook")" in \
+            "$$(printf '#!/bin/sh\nexec make lint')"|"$$(printf '#!/bin/sh\nexec make pre-commit')") ;; \
+            *) echo "$$hook already exists; not replacing it"; exit 1 ;; \
+        esac; \
+    fi; \
+	mkdir -p "$$(dirname "$$hook")" && printf '#!/bin/sh\nexec make lint\n' > "$$hook" && \
+	chmod +x "$$hook" && echo "Installed $$hook (runs make lint)"
+
 
 # Clean build artifacts
 clean:
-	@rm -rf $(BUILD_DIR) build-coverage
+	@rm -rf $(BUILD_DIR) build-debug build-coverage
 	@echo "Cleaned build directory"
 
 # Run examples — each runs a real HTTP call against api.open-meteo.com.
@@ -137,3 +135,6 @@ lint-md:
 
 format-md:
 	npx markdownlint-cli2 --fix "**/*.md"
+
+consumers:
+	@bash tools/test_consumers.sh $(CMAKE_ARGS)

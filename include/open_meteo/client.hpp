@@ -143,7 +143,7 @@ public:
 
 	// ===== Accessors =====
 
-	/// Access the underlying HTTP client
+	/// Access the transport; throws std::logic_error on a moved-from client.
 	[[nodiscard]] HttpClient& http_client();
 	[[nodiscard]] const HttpClient& http_client() const;
 

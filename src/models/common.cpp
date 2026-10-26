@@ -10,23 +10,12 @@
 #include <string>
 #include <vector>
 
+#include "../json.hpp"
 #include "common_glaze_detail.hpp"
 
 namespace open_meteo {
 
-// ===== Internal-helper file plan =====
-//
-// The TimeseriesData payload has DYNAMIC KEYS (variable names come from the
-// user's query string), so we cannot pre-declare a glz::meta. We parse a
-// full response into `glz::generic` once and walk the resulting AST. The
-// inner helpers `populate_*_from_generic`, `extract_*` are exported via
-// the `detail::` namespace at the bottom of this file for use by
-// `seasonal.cpp`, which extends the WeatherResponse layout with additional
-// timeseries blocks (`six_hourly`, `weekly`, `monthly`).
-//
-// TODO(glaze): once Open-Meteo stabilizes a documented "variables" envelope,
-// migrate the dynamic-key dispatch to a static glz::meta to squeeze out the
-// remaining ~10% generic-AST overhead.
+// Variable names are dynamic; parse each response once into a generic tree.
 
 namespace {
 
@@ -44,6 +33,23 @@ void populate_timeseries_from_generic(const glz::generic& node, TimeseriesData& 
 		return;
 	}
 	const glz::generic::object_t& obj = node.get_object();
+	const auto current_time = obj.find("time");
+	if (current_time != obj.end() && current_time->second.is_string()) {
+		ts.time.push_back(current_time->second.get<std::string>());
+		for (const auto& [key, value] : obj) {
+			if (key == "time") {
+				continue;
+			}
+			if (value.is_number()) {
+				ts.values[key] = {value.get<double>()};
+			} else if (value.is_null()) {
+				ts.values[key] = {std::numeric_limits<double>::quiet_NaN()};
+			} else if (value.is_string()) {
+				ts.string_values[key] = {value.get<std::string>()};
+			}
+		}
+		return;
+	}
 
 	// 1) "time" array (strings)
 	glz::generic::object_t::const_iterator time_it = obj.find("time");
@@ -164,7 +170,11 @@ void populate_location_from_generic(const glz::generic& root, Location& loc) {
 	}
 	it = obj.find("utc_offset_seconds");
 	if (it != obj.end() && it->second.is_number()) {
-		loc.utc_offset_seconds = static_cast<int>(it->second.get<double>());
+		const double value = it->second.get<double>();
+		if (std::isfinite(value) && value >= std::numeric_limits<int>::min() &&
+			value <= std::numeric_limits<int>::max()) {
+			loc.utc_offset_seconds = static_cast<int>(value);
+		}
 	}
 	it = obj.find("timezone");
 	if (it != obj.end() && it->second.is_string()) {
@@ -188,10 +198,14 @@ Result<void> deserialize_location(std::string_view body, Location& out) {
 	// the AST allocation on the scalars doesn't materially help end-to-end
 	// throughput, so we prefer the single generic-pass for simplicity.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	if (!root.is_object()) {
+		return std::unexpected(Error::parse("Expected a JSON object"));
+	}
+	out = {};
 	populate_location_from_generic(root, out);
 	return {};
 }
@@ -200,11 +214,15 @@ Result<void> deserialize_weather_response(std::string_view body, WeatherResponse
 	// Weather payloads have dynamic per-variable keys inside the timeseries
 	// blocks. Parse once into glz::generic, then dispatch.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kJsonReadOptions>(root, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
 
+	if (!root.is_object()) {
+		return std::unexpected(Error::parse("Expected a JSON object"));
+	}
+	out = {};
 	populate_location_from_generic(root, static_cast<Location&>(out));
 
 	out.hourly = extract_timeseries(root, "hourly");
